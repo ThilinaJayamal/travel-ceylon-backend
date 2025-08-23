@@ -10,6 +10,7 @@ const GuideSchema = new mongoose.Schema({
   province: String,
   district: String,
   city: String,
+  languages:[String],
   guideLicenceImg: String,
   nicImg: String,
   policeClearanceImg: String,
