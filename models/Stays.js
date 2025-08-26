@@ -7,12 +7,17 @@ const StaySchema = new mongoose.Schema({
   contact: String,
   website: String,
   facilities: [String],
-  rooms: [RoomSchema],
+  rooms: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room"
+    }
+  ],
   images: [String],
   description: String,
   profilePic: String,
 });
 
-const stays = mongoose.model("Stays",StaySchema);
+const stays = mongoose.model("Stays", StaySchema);
 
 export default stays;

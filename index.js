@@ -8,6 +8,7 @@ import serviceProviderRouter from './routes/serviceProviderRoute.js'
 import taxiRouter from './routes/taxiRoute.js'
 import staysRouter from './routes/staysRoute.js'
 import guideRouter from './routes/guideRoute.js'
+import rentRouter from './routes/rentRoute.js'
 
 dotenv.config()
 connectDB();
@@ -23,6 +24,7 @@ app.use("/api/service-provider",serviceProviderRouter);
 app.use("/api/service/taxi",taxiRouter)
 app.use("/api/service/stays", staysRouter)
 app.use("/api/service/guide", guideRouter)
+app.use("/api/service/rent", rentRouter)
 
 const port = process.env.PORT || 4000;
 

@@ -8,4 +8,6 @@ export const RoomSchema = new mongoose.Schema({
   images:[String]
 });
 
-export const Room = mongoose.model("Room",RoomSchema);
+const room = mongoose.model("Room",RoomSchema);
+
+export default room

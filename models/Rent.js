@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import {VehicleSchema} from '../models/Vehicle.js'
 
 const RentSchema = new mongoose.Schema({
   name: { type: String, required: true },
