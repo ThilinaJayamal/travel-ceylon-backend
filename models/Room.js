@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export const RoomSchema = new mongoose.Schema({
+const RoomSchema = new mongoose.Schema({
   roomType: { type: String, required: true },
   price: { type: Number, required: true },
   maxGuest: { type: Number, required: true },

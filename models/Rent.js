@@ -1,15 +1,19 @@
 import mongoose from "mongoose";
-import {VehicleSchema} from '../models/Vehicle.js'
 
 const RentSchema = new mongoose.Schema({
   name: { type: String, required: true },
   contact: [String],
-  vehicles: [VehicleSchema],
+  vehicles: [
+    {
+      type: mongoose.Types.ObjectId,
+      ref: "Vehicle"
+    }
+  ],
   profilePic: String,
   nic: { type: String, required: true },
   nicImg: String,
 });
 
-const rent = mongoose.model("Rent",RentSchema);
+const rent = mongoose.model("Rent", RentSchema);
 
 export default rent;

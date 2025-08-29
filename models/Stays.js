@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { RoomSchema } from "./Room.js";
 
 const StaySchema = new mongoose.Schema({
   name: { type: String, required: true },

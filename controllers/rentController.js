@@ -1,5 +1,6 @@
-import RentModel from "../models/Rent.js";
-import ServiceProvider from "../models/ServiceProvider.js";
+import rentModel from "../models/Rent.js";
+import serviceProviderModel from "../models/ServiceProvider.js";
+import vehicleModel from "../models/Vehicle.js";
 
 export const rentRegister = async (req, res) => {
   try {
@@ -7,30 +8,26 @@ export const rentRegister = async (req, res) => {
       return res.status(401).json("Not authorized");
     }
 
-    // Find the service provider
-    const provider = await ServiceProvider.findById(req.user);
+    const provider = await serviceProviderModel.findById(req.user);
     if (!provider) {
       return res.status(404).json("Service Provider Not Found");
     }
 
-    // Check if provider already linked to a service
     if (provider.serviceId) {
       return res
         .status(400)
         .json("Can't create multiple services using a single account");
     }
 
-    // Create new Rent service
-    const newRent = await RentModel.create({
+    const newRent = await rentModel.create({
       name: req.body.name,
       contact: req.body.contact || [],
       profilePic: req.body.profilePic,
       nic: req.body.nic,
       nicImg: req.body.nicImg,
-      vehicles: req.body.vehicles || [], // must be array of VehicleSchema objects
+      vehicles: req.body.vehicles || [],
     });
 
-    // Link the rent service to the service provider
     provider.serviceId = newRent._id;
     provider.serviceType = "rent";
     await provider.save();
@@ -42,5 +39,127 @@ export const rentRegister = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json("Server Error");
+  }
+};
+
+export const addVehicle = async (req, res) => {
+  try {
+    const { rentId } = req.params;
+
+    if (!rentId) {
+      return res.status(400).json({ message: "Rent ID is required" });
+    }
+
+    const rent = await rentModel.findById(rentId);
+    if (!rent) {
+      return res.status(404).json({ message: "Rent not found" });
+    }
+
+    const { images, chasyNo, vehicleNo, province, vehicleType } = req.body;
+
+    const newVehicle = new vehicleModel({
+      images: images || [],
+      chasyNo,
+      vehicleNo,
+      province,
+      vehicleType,
+    });
+
+    await newVehicle.save();
+
+    rent.vehicles.push(newVehicle._id);
+    await rent.save();
+
+    return res.status(201).json({
+      message: "Vehicle added successfully",
+      vehicle: newVehicle,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+export const updateVehicle = async (req, res) => {
+  try {
+    const { rentId, vehicleId } = req.params;
+
+    if (!rentId || !vehicleId) {
+      return res.status(400).json({ message: "Rent ID and Vehicle ID are required" });
+    }
+
+    const rent = await rentModel.findById(rentId);
+    if (!rent) {
+      return res.status(404).json({ message: "Rent not found" });
+    }
+
+    if (!rent.vehicles.includes(vehicleId)) {
+      return res.status(403).json({ message: "This vehicle does not belong to the given Rent" });
+    }
+
+    const updateData = {
+      images: req.body.images,
+      chasyNo: req.body.chasyNo,
+      vehicleNo: req.body.vehicleNo,
+      province: req.body.province,
+      vehicleType: req.body.vehicleType,
+    };
+
+    const updatedVehicle = await vehicleModel.findByIdAndUpdate(
+      vehicleId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedVehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    return res.status(200).json({
+      message: "Vehicle updated successfully",
+      vehicle: updatedVehicle,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+export const deleteVehicle = async (req, res) => {
+  try {
+    const { rentId, vehicleId } = req.params;
+
+    if (!rentId || !vehicleId) {
+      return res.status(400).json({ message: "Rent ID and Vehicle ID are required" });
+    }
+
+    const rent = await rentModel.findById(rentId);
+    if (!rent) {
+      return res.status(404).json({ message: "Rent not found" });
+    }
+
+    if (!rent.vehicles.includes(vehicleId)) {
+      return res.status(403).json({ message: "This vehicle does not belong to the given Rent" });
+    }
+
+    const deletedVehicle = await vehicleModel.findByIdAndDelete(vehicleId);
+    if (!deletedVehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    rent.vehicles = rent.vehicles.filter(
+      (id) => id.toString() !== vehicleId.toString()
+    );
+    await rent.save();
+
+    return res.status(200).json({
+      message: "Vehicle deleted successfully",
+      vehicle: deletedVehicle,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
