@@ -6,6 +6,7 @@ const BookingSchema = new mongoose.Schema({
   serviceType: { type: String, required: true, enum: ["Taxi", "Stay", "Guide", "Rent"] },
   start_date: { type: Date, required: true },
   end_date: { type: Date, required: true },
+  roomId: { type: mongoose.Types.ObjectId },
   status: { type: String, default: "pending", enum: ["pending", "confirmed", "cancelled", "completed"] },
 });
 

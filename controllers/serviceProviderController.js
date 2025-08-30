@@ -19,10 +19,10 @@ export const register = async (req, res) => {
             password: hashPassword,
             serviceType,
             serviceId,
-            verify
+            verify,
         });
 
-        const token = generateToken(user._id);
+        const token = generateToken(user._id, "provider");
 
         res.cookie("token", token, {
             httpOnly: true,
@@ -36,7 +36,8 @@ export const register = async (req, res) => {
             email: user.email,
             serviceType: user.serviceType,
             serviceId: user.serviceId,
-            verify: user.verify
+            verify: user.verify,
+            role:"provider"
         });
 
     } catch (error) {
@@ -106,7 +107,7 @@ export const login = async (req, res) => {
             return res.status(400).json({ message: "Invalid email or password" });
         }
 
-        const token = generateToken(user._id);
+        const token = generateToken(user._id,"provider");
 
         res.cookie("token", token, {
             httpOnly: true,
@@ -120,7 +121,8 @@ export const login = async (req, res) => {
             email: user.email,
             serviceType: user.serviceType,
             serviceId: user.serviceId,
-            verify: user.verify
+            verify: user.verify,
+            role:"provider"
         });
 
     } catch (error) {

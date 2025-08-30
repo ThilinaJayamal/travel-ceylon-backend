@@ -35,7 +35,7 @@ export const guideRegister = async (req, res) => {
         });
 
         provider.serviceId = newGuide._id;
-        provider.serviceType = "guide";
+        provider.serviceType = "Guide";
         await provider.save();
 
         res.status(201).json({
@@ -51,18 +51,39 @@ export const guideRegister = async (req, res) => {
 export const getGuideProfile = async (req, res) => {
     try {
         const serviceProvider = await serviceProviderModel.findById(req.user)
-        if(!serviceProvider){
-            return res.status(404).json({message:"service provider not found"})
+        if (!serviceProvider) {
+            return res.status(404).json({ message: "service provider not found" })
         }
 
         const guide = await guideModel.findById(serviceProvider?.serviceId);
-        if(!guide){
-            return res.status(404).json({message:"guide profile not found"});
+        if (!guide) {
+            return res.status(404).json({ message: "guide profile not found" });
         }
 
         return res.status(200).json({
-            success:true,
-            guide:guide
+            success: true,
+            guide: guide
+        })
+    } catch (error) {
+        res.status(500).json("Server Error")
+    }
+}
+
+export const getGuideProfilePublic = async (req, res) => {
+    try {
+        const guide = await serviceProviderModel
+            .find({ serviceType: "Stays" })
+            .populate({
+                path: "serviceId",
+                populate: {
+                    path: "rooms",
+                }
+            })
+            .select("-password");
+
+        return res.status(200).json({
+            success: true,
+            guide: guide
         })
     } catch (error) {
         res.status(500).json("Server Error")

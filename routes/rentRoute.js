@@ -12,8 +12,8 @@ router.route("/")
 
 router.route("/profile").get(auth, getRentProfile)
 
-router.route("/:rentId/vehicle").post(auth, addVehicle)
-router.route("/:rentId/vehicle/:vehicleId").put(auth, updateVehicle)
-router.route("/:rentId/vehicle/:vehicleId").delete(auth, deleteVehicle)
+router.route("/vehicle").post(auth, addVehicle)
+router.route("/vehicle/:vehicleId").put(auth, updateVehicle)
+router.route("/vehicle/:vehicleId").delete(auth, deleteVehicle)
 
 export default router

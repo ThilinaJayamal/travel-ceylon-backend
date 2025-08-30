@@ -26,7 +26,7 @@ export const register = async (req, res) => {
     });
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, "user");
 
     // Send token as secure cookie
     res.cookie("token", token, {
@@ -42,6 +42,7 @@ export const register = async (req, res) => {
       email: user.email,
       phone: user.phone,
       profilePic: user.profilePic,
+      role:"user"
     });
 
   } catch (error) {
@@ -67,7 +68,7 @@ export const login = async (req, res) => {
     }
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, "user");
 
     // Set token as cookie
     res.cookie("token", token, {
@@ -84,6 +85,7 @@ export const login = async (req, res) => {
       email: user.email,
       phone: user.phone,
       profilePic: user.profilePic,
+      role:"user"
     });
 
   } catch (error) {

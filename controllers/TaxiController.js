@@ -41,7 +41,7 @@ export const registerTaxi = async (req, res) => {
     });
 
     provider.serviceId = taxiUser._id;
-    provider.serviceType = "taxi";
+    provider.serviceType = "Taxi";
     await provider.save();
 
     res.status(201).json({ message: "Taxi registered successfully", taxi: taxiUser });

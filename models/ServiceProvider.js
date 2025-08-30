@@ -5,8 +5,7 @@ const ServiceProviderSchema = new mongoose.Schema({
   password: { type: String, required: true },
   serviceType: {
     type: String,
-    required: true,
-    enum: ["taxi", "stays", "rent", "guide"]
+    enum: ["Taxi", "Stays", "Rent", "Guide"]
   },
   serviceId: {
     type: mongoose.Schema.Types.ObjectId,

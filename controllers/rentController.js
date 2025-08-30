@@ -4,7 +4,7 @@ import vehicleModel from "../models/Vehicle.js";
 
 export const rentRegister = async (req, res) => {
   try {
-    if (!req?.user) {
+    if (!req?.user || req.role === "user") {
       return res.status(401).json("Not authorized");
     }
 
@@ -29,7 +29,7 @@ export const rentRegister = async (req, res) => {
     });
 
     provider.serviceId = newRent._id;
-    provider.serviceType = "rent";
+    provider.serviceType = "Rent";
     await provider.save();
 
     res.status(201).json({
@@ -43,24 +43,24 @@ export const rentRegister = async (req, res) => {
 };
 
 export const getRentProfile = async (req, res) => {
-    try {
-        const serviceProvider = await serviceProviderModel.findById(req.user)
-        if(!serviceProvider){
-            return res.status(404).json({message:"service provider not found"})
-        }
-
-        const rent = await rentModel.findById(serviceProvider?.serviceId);
-        if(!rent){
-            return res.status(404).json({message:"rent profile not found"});
-        }
-
-        return res.status(200).json({
-            success:true,
-            rent:rent
-        })
-    } catch (error) {
-        res.status(500).json("Server Error")
+  try {
+    const serviceProvider = await serviceProviderModel.findById(req.user)
+    if (!serviceProvider) {
+      return res.status(404).json({ message: "service provider not found" })
     }
+
+    const rent = await rentModel.findById(serviceProvider?.serviceId);
+    if (!rent) {
+      return res.status(404).json({ message: "rent profile not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      rent: rent
+    })
+  } catch (error) {
+    res.status(500).json("Server Error")
+  }
 }
 
 export const getAllRents = async (req, res) => {
@@ -69,7 +69,7 @@ export const getAllRents = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      count:rents.length,
+      count: rents.length,
       rents: rents
     })
   } catch (error) {
@@ -79,6 +79,10 @@ export const getAllRents = async (req, res) => {
 
 export const updateRent = async (req, res) => {
   try {
+    if (!req?.user || req.role === "user") {
+      return res.status(401).json("Not authorized");
+    }
+
     const serviceprovider = await serviceProviderModel.findById(req.user);
     if (!serviceprovider) {
       return res.status(404).json({ message: "Service provider account not found" });
@@ -110,15 +114,14 @@ export const updateRent = async (req, res) => {
 
 export const addVehicle = async (req, res) => {
   try {
-    const { rentId } = req.params;
-
-    if (!rentId) {
-      return res.status(400).json({ message: "Rent ID is required" });
+    const serviceProvider = await serviceProviderModel.findById(req.user);
+    if (!serviceProvider) {
+      return res.status(404).json({ message: "Service provider account not found" });
     }
 
-    const rent = await rentModel.findById(rentId);
+    const rent = await rentModel.findById(serviceProvider?.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "Rent not found" });
+      return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
     }
 
     const { images, chasyNo, vehicleNo, province, vehicleType } = req.body;
@@ -149,17 +152,18 @@ export const addVehicle = async (req, res) => {
 
 export const updateVehicle = async (req, res) => {
   try {
-    const { rentId, vehicleId } = req.params;
+    const { vehicleId } = req.params;
 
-    if (!rentId || !vehicleId) {
-      return res.status(400).json({ message: "Rent ID and Vehicle ID are required" });
+    const serviceProvider = await serviceProviderModel.findById(req.user);
+    if (!serviceProvider) {
+      return res.status(404).json({ message: "Service provider account not found" });
     }
 
-    const rent = await rentModel.findById(rentId);
+    const rent = await rentModel.findById(serviceProvider?.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "Rent not found" });
+      return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
     }
-
+    
     if (!rent.vehicles.includes(vehicleId)) {
       return res.status(403).json({ message: "This vehicle does not belong to the given Rent" });
     }
@@ -195,15 +199,16 @@ export const updateVehicle = async (req, res) => {
 
 export const deleteVehicle = async (req, res) => {
   try {
-    const { rentId, vehicleId } = req.params;
+    const { vehicleId } = req.params;
 
-    if (!rentId || !vehicleId) {
-      return res.status(400).json({ message: "Rent ID and Vehicle ID are required" });
+    const serviceProvider = await serviceProviderModel.findById(req.user);
+    if (!serviceProvider) {
+      return res.status(404).json({ message: "Service provider account not found" });
     }
 
-    const rent = await rentModel.findById(rentId);
+    const rent = await rentModel.findById(serviceProvider?.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "Rent not found" });
+      return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
     }
 
     if (!rent.vehicles.includes(vehicleId)) {
