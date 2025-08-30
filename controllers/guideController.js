@@ -1,5 +1,5 @@
 import guideModel from "../models/Guide.js";
-import ServiceProvider from "../models/ServiceProvider.js";
+import serviceProviderModel from "../models/ServiceProvider.js";
 
 export const guideRegister = async (req, res) => {
     try {
@@ -7,20 +7,17 @@ export const guideRegister = async (req, res) => {
             return res.status(401).json("Not authorized");
         }
 
-        // Find the service provider
-        const provider = await ServiceProvider.findById(req.user);
+        const provider = await serviceProviderModel.findById(req.user);
         if (!provider) {
             return res.status(404).json("Service Provider Not Found");
         }
 
-        // Check if provider already linked to a service
         if (provider.serviceId) {
             return res
                 .status(400)
                 .json("Can't create multiple services using a single account");
         }
 
-        // Create new guide
         const newGuide = await guideModel.create({
             name: req.body.name,
             nic: req.body.nic,
@@ -37,7 +34,6 @@ export const guideRegister = async (req, res) => {
             policeClearanceImg: req.body.policeClearanceImg,
         });
 
-        // Link the guide to the service provider
         provider.serviceId = newGuide._id;
         provider.serviceType = "guide";
         await provider.save();
@@ -46,6 +42,49 @@ export const guideRegister = async (req, res) => {
             message: "Guide registered successfully",
             guide: newGuide,
         });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json("Server Error");
+    }
+};
+
+export const updateGuide = async (req, res) => {
+    try {
+        const serviceProvider = await serviceProviderModel.findById(req.user);
+        if (!serviceProvider) {
+            return res.status(404).json({ message: "Service provider account not found" });
+        }
+
+        const guide = await guideModel.findById(serviceProvider.serviceId);
+        if (!guide) {
+            return res.status(404).json({ message: "Guide account not found" });
+        }
+
+        const {
+            name,
+            profilePic,
+            images,
+            specializeArea,
+            province,
+            district,
+            city,
+            languages,
+            contact
+        } = req.body;
+
+        if (name) guide.name = name;
+        if (contact) guide.contact = contact;
+        if (profilePic) guide.profilePic = profilePic;
+        if (images) guide.images = images;
+        if (specializeArea) guide.specializeArea = specializeArea;
+        if (province) guide.province = province;
+        if (district) guide.district = district;
+        if (city) guide.city = city;
+        if (languages) guide.languages = languages;
+
+        await guide.save();
+
+        res.status(200).json({ message: "Guide updated successfully", guide });
     } catch (error) {
         console.error(error);
         res.status(500).json("Server Error");

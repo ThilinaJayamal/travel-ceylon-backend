@@ -6,17 +6,14 @@ export const register = async (req, res) => {
     try {
         const { email, password, serviceType, serviceId, verify } = req.body;
 
-        // Check if user already exists
         const existingUser = await serviceProviderModel.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: "User already exists" });
         }
 
-        // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashPassword = await bcrypt.hash(password, salt);
 
-        // Create new user
         const user = await serviceProviderModel.create({
             email,
             password: hashPassword,
@@ -25,15 +22,13 @@ export const register = async (req, res) => {
             verify
         });
 
-        // Generate token
         const token = generateToken(user._id);
 
-        // Send token as secure cookie
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
         res.status(201).json({
@@ -49,35 +44,77 @@ export const register = async (req, res) => {
     }
 };
 
+export const updateServiceProvider = async (req, res) => {
+    try {
+        const serviceProvider = await serviceProviderModel.findById(req.user);
+        if (!serviceProvider) {
+            return res.status(404).json({ message: "Service provider account not found" });
+        }
+
+        if (req.body.email) {
+            serviceProvider.email = req.body.email;
+        }
+        if (req.body.password) {
+            const salt = await bcrypt.genSalt(10);
+            serviceProvider.password = await bcrypt.hash(req.body.password, salt);
+        }
+
+        await serviceProvider.save();
+
+        res.status(200).json({
+            _id: serviceProvider._id,
+            email: serviceProvider.email,
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+export const verifyAccount = async (req, res) => {
+    const { serviceProviderId } = req.params;
+    try {
+        const serviceProvider = await serviceProviderModel.findById(serviceProviderId);
+        if (!serviceProvider) {
+            return res.status(404).json({ message: "Service provider account not found" });
+        }
+
+        serviceProvider.verify = true;
+        await serviceProvider.save();
+
+        res.status(200).json({ message: "Account verified successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+
 
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Check if user exists
         const user = await serviceProviderModel.findOne({ email });
         if (!user) {
             return res.status(400).json({ message: "Invalid email or password" });
         }
 
-        // Check password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: "Invalid email or password" });
         }
 
-        // Generate token
         const token = generateToken(user._id);
 
-        // Set token as cookie
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        // Send response
         res.status(200).json({
             _id: user._id,
             email: user.email,

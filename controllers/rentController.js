@@ -42,6 +42,37 @@ export const rentRegister = async (req, res) => {
   }
 };
 
+export const updateRent = async (req, res) => {
+  try {
+    const serviceprovider = await serviceProviderModel.findById(req.user);
+    if (!serviceprovider) {
+      return res.status(404).json({ message: "Service provider account not found" });
+    }
+
+    const rent = await rentModel.findById(serviceprovider.serviceId);
+    if (!rent) {
+      return res.status(404).json({ message: "Rent profile not found" });
+    }
+
+    const { name, contact, profilePic } = req.body;
+
+    if (name) rent.name = name;
+    if (contact) rent.contact = contact;
+    if (profilePic) rent.profilePic = profilePic;
+
+    await rent.save();
+
+    res.status(200).json({
+      message: "Rent profile updated successfully",
+      rent,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json("Server Error");
+  }
+};
+
+
 export const addVehicle = async (req, res) => {
   try {
     const { rentId } = req.params;

@@ -47,7 +47,7 @@ export const registerStays = async (req, res) => {
   }
 };
 
-export const updateStay = async (req, res) => {
+export const updateStays = async (req, res) => {
   try {
     if (!req?.user) {
       return res.status(401).json("Not authorized");

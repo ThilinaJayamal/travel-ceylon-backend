@@ -4,6 +4,7 @@ const TaxiSchema = new mongoose.Schema({
   driverName: { type: String, required: true },
   nic: { type: String, required: true },
   drivingId: { type: String, required: true },
+  profilePic:{type:String},
   nicImg: String,
   drivingIdImg: String,
   contact: [String],
