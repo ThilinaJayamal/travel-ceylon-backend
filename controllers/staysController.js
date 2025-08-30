@@ -1,6 +1,6 @@
 import staysModel from "../models/Stays.js";
 import roomModel from "../models/Room.js";
-import ServiceProviderModel from "../models/ServiceProvider.js";
+import serviceProviderModel from "../models/ServiceProvider.js";
 
 // -------------------------Stays---------------------------------------
 
@@ -10,7 +10,7 @@ export const registerStays = async (req, res) => {
       return res.status(401).json("Not authorized");
     }
 
-    const provider = await ServiceProviderModel.findById(req.user);
+    const provider = await serviceProviderModel.findById(req.user);
     if (!provider) {
       return res.status(404).json("Service Provider Not Found");
     }
@@ -53,7 +53,7 @@ export const updateStays = async (req, res) => {
       return res.status(401).json("Not authorized");
     }
 
-    const serviceProvider = await ServiceProviderModel.findById(req.user);
+    const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
       return res.status(404).json("Service provider account is not found");
     }
@@ -95,6 +95,27 @@ export const updateStays = async (req, res) => {
     res.status(500).json("Server Error");
   }
 };
+
+export const getStaysProfile = async (req, res) => {
+    try {
+        const serviceProvider = await serviceProviderModel.findById(req.user)
+        if(!serviceProvider){
+            return res.status(404).json({message:"service provider not found"})
+        }
+
+        const stays = await staysModel.findById(serviceProvider?.serviceId);
+        if(!stays){
+            return res.status(404).json({message:"stays profile not found"});
+        }
+
+        return res.status(200).json({
+            success:true,
+            stays:stays
+        })
+    } catch (error) {
+        res.status(500).json("Server Error")
+    }
+}
 
 export const getAllStays = async (req, res) => {
   try {

@@ -48,13 +48,34 @@ export const guideRegister = async (req, res) => {
     }
 };
 
-export const getAllGuides = async (req,res) => {
+export const getGuideProfile = async (req, res) => {
+    try {
+        const serviceProvider = await serviceProviderModel.findById(req.user)
+        if(!serviceProvider){
+            return res.status(404).json({message:"service provider not found"})
+        }
+
+        const guide = await guideModel.findById(serviceProvider?.serviceId);
+        if(!guide){
+            return res.status(404).json({message:"guide profile not found"});
+        }
+
+        return res.status(200).json({
+            success:true,
+            guide:guide
+        })
+    } catch (error) {
+        res.status(500).json("Server Error")
+    }
+}
+
+export const getAllGuides = async (req, res) => {
     try {
         const guides = await guideModel.find({});
 
         return res.status(200).json({
             success: true,
-            count:guides.length,
+            count: guides.length,
             guides: guides
         })
     } catch (error) {

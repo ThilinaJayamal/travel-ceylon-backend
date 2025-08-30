@@ -1,4 +1,4 @@
-import ServiceProviderModel from "../models/ServiceProvider.js";
+import serviceProviderModel from "../models/ServiceProvider.js";
 import TaxiModel from "../models/Taxi.js";
 
 export const registerTaxi = async (req, res) => {
@@ -7,7 +7,7 @@ export const registerTaxi = async (req, res) => {
       return res.status(401).json("Not authorized");
     }
 
-    const provider = await ServiceProviderModel.findById(req.user);
+    const provider = await serviceProviderModel.findById(req.user);
     if (!provider) {
       return res.status(404).json("Service Provider Not Found");
     }
@@ -52,6 +52,28 @@ export const registerTaxi = async (req, res) => {
   }
 };
 
+export const getTaxiProfile = async (req, res) => {
+    try {
+        const serviceProvider = await serviceProviderModel.findById(req.user)
+        if(!serviceProvider){
+            return res.status(404).json({message:"service provider not found"})
+        }
+
+        const taxi = await TaxiModel.findById(serviceProvider?.serviceId);
+        if(!taxi){
+            return res.status(404).json({message:"taxi profile not found"});
+        }
+
+        return res.status(200).json({
+            success:true,
+            taxi:taxi
+        })
+    } catch (error) {
+        res.status(500).json("Server Error")
+    }
+}
+
+
 export const getAllTaxi = async (req, res) => {
   try {
     const taxi = await TaxiModel.find({});
@@ -68,7 +90,7 @@ export const getAllTaxi = async (req, res) => {
 
 export const updateTaxi = async (req, res) => {
   try {
-    const provider = await ServiceProviderModel.findById(req.user);
+    const provider = await serviceProviderModel.findById(req.user);
 
     const taxi = await TaxiModel.findById(provider.serviceId);
     if (!taxi) {

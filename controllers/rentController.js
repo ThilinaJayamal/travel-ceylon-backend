@@ -42,6 +42,27 @@ export const rentRegister = async (req, res) => {
   }
 };
 
+export const getRentProfile = async (req, res) => {
+    try {
+        const serviceProvider = await serviceProviderModel.findById(req.user)
+        if(!serviceProvider){
+            return res.status(404).json({message:"service provider not found"})
+        }
+
+        const rent = await rentModel.findById(serviceProvider?.serviceId);
+        if(!rent){
+            return res.status(404).json({message:"rent profile not found"});
+        }
+
+        return res.status(200).json({
+            success:true,
+            rent:rent
+        })
+    } catch (error) {
+        res.status(500).json("Server Error")
+    }
+}
+
 export const getAllRents = async (req, res) => {
   try {
     const rents = await rentModel.find({});
