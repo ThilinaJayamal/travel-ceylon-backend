@@ -54,6 +54,7 @@ export const getAllGuides = async (req,res) => {
 
         return res.status(200).json({
             success: true,
+            count:guides.length,
             guides: guides
         })
     } catch (error) {

@@ -58,6 +58,7 @@ export const getAllTaxi = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      count:taxi.length,
       taxi: taxi
     })
   } catch (error) {

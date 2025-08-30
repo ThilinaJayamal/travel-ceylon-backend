@@ -102,6 +102,7 @@ export const getAllStays = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      count:stays.length,
       stays: stays
     })
   } catch (error) {
