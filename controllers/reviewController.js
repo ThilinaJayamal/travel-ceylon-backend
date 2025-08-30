@@ -6,10 +6,19 @@ export const addReview = async (req, res) => {
     try {
         const user = await userModel.findById(req.user);
         if (!user) {
-            return res.status(401).json({ message: "User not found" });
+            return res.status(404).json({ message: "User not found" });
         }
 
         const { serviceId, serviceType, comment, rating } = req.body;
+
+        const review = reviewModel.findOne({
+            user: user,
+            serviceId: serviceId,
+            serviceType: serviceType
+        });
+        if (review) {
+            return res.status(401).json({ message: "You have alredy reviewed this service" })
+        }
 
         if (!serviceId || !serviceType || rating === undefined) {
             return res.status(400).json({ message: "Missing required fields" });
