@@ -89,14 +89,25 @@ export const updateStays = async (req, res) => {
       message: "Stay updated successfully",
       stays
     });
-    
+
   } catch (error) {
     console.error(error);
     res.status(500).json("Server Error");
   }
 };
 
+export const getAllStays = async (req, res) => {
+  try {
+    const stays = await staysModel.find({});
 
+    return res.status(200).json({
+      success: true,
+      stays: stays
+    })
+  } catch (error) {
+    res.status(500).json("Server Error")
+  }
+}
 
 // -------------------------Rooms-------------------------------
 

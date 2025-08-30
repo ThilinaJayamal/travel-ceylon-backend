@@ -42,6 +42,19 @@ export const rentRegister = async (req, res) => {
   }
 };
 
+export const getAllRents = async (req, res) => {
+  try {
+    const rents = await rentModel.find({});
+
+    return res.status(200).json({
+      success: true,
+      rents: rents
+    })
+  } catch (error) {
+    res.status(500).json("Server Error")
+  }
+}
+
 export const updateRent = async (req, res) => {
   try {
     const serviceprovider = await serviceProviderModel.findById(req.user);

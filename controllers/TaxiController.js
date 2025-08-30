@@ -52,17 +52,29 @@ export const registerTaxi = async (req, res) => {
   }
 };
 
+export const getAllTaxi = async (req, res) => {
+  try {
+    const taxi = await TaxiModel.find({});
+
+    return res.status(200).json({
+      success: true,
+      taxi: taxi
+    })
+  } catch (error) {
+    res.status(500).json("Server Error")
+  }
+}
 
 export const updateTaxi = async (req, res) => {
   try {
     const provider = await ServiceProviderModel.findById(req.user);
-   
+
     const taxi = await TaxiModel.findById(provider.serviceId);
     if (!taxi) {
       return res.status(404).json({ message: "Taxi not found" });
     }
 
-    const { driverName, contact, website,profilePic } = req.body;
+    const { driverName, contact, website, profilePic } = req.body;
 
     if (driverName) taxi.driverName = driverName;
     if (contact) taxi.contact = contact;

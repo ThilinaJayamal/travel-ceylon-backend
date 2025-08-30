@@ -72,23 +72,23 @@ export const updateServiceProvider = async (req, res) => {
 };
 
 
-export const verifyAccount = async (req, res) => {
-    const { serviceProviderId } = req.params;
-    try {
-        const serviceProvider = await serviceProviderModel.findById(serviceProviderId);
-        if (!serviceProvider) {
-            return res.status(404).json({ message: "Service provider account not found" });
-        }
+// export const verifyAccount = async (req, res) => {
+//     const { serviceProviderId } = req.params;
+//     try {
+//         const serviceProvider = await serviceProviderModel.findById(serviceProviderId);
+//         if (!serviceProvider) {
+//             return res.status(404).json({ message: "Service provider account not found" });
+//         }
 
-        serviceProvider.verify = true;
-        await serviceProvider.save();
+//         serviceProvider.verify = true;
+//         await serviceProvider.save();
 
-        res.status(200).json({ message: "Account verified successfully" });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
-    }
-};
+//         res.status(200).json({ message: "Account verified successfully" });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: "Server error" });
+//     }
+// };
 
 
 

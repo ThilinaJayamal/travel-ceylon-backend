@@ -1,13 +1,14 @@
 import express from "express";
 import { auth } from "../middleware/auth.js";
-import { deleteRoom, registerStays, updateRoom, updateStays } from "../controllers/staysController.js";
+import { deleteRoom, getAllStays, registerStays, updateRoom, updateStays } from "../controllers/staysController.js";
 import { addRoom } from "../controllers/staysController.js";
 
 const router = express.Router();
 
 router.route("/")
     .post(auth, registerStays)
-    .put(auth,updateStays);
+    .put(auth,updateStays)
+    .get(getAllStays);
 
 router.route("/:id/rooms").post(auth, addRoom);
 router.route("/rooms/:staysId/:roomId").put(auth, updateRoom);

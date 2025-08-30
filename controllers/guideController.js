@@ -48,6 +48,19 @@ export const guideRegister = async (req, res) => {
     }
 };
 
+export const getAllGuides = async (req,res) => {
+    try {
+        const guides = await guideModel.find({});
+
+        return res.status(200).json({
+            success: true,
+            guides: guides
+        })
+    } catch (error) {
+        res.status(500).json("Server Error")
+    }
+}
+
 export const updateGuide = async (req, res) => {
     try {
         const serviceProvider = await serviceProviderModel.findById(req.user);
