@@ -284,6 +284,13 @@ export const getAvailableVehicles = async (req, res) => {
 
 export const createRentBooking = async (req, res) => {
   try {
+    if (req.role !== "user") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed to book services"
+      })
+    }
+
     const { vehicleId, pickup, returnDate, area } = req.body;
 
     if (!vehicleId || !pickup || !returnDate || !area) {

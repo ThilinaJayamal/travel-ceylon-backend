@@ -182,6 +182,13 @@ export const getAvailableGuides = async (req, res) => {
 
 export const createGuideBooking = async (req, res) => {
     try {
+        if(req.role !== "user"){
+            return res.status(401).json({
+                success:false,
+                message:"You are not allowed to book services"
+            })
+        }
+
         const { serviceId, date, time, requests } = req.body;
         const userId = req.user; // assuming you use JWT auth
 

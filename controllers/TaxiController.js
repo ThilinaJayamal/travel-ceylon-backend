@@ -8,6 +8,13 @@ export const registerTaxi = async (req, res) => {
       return res.status(401).json("Not authorized");
     }
 
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const provider = await serviceProviderModel.findById(req.user);
     if (!provider) {
       return res.status(404).json("Service Provider Not Found");
@@ -74,7 +81,6 @@ export const getTaxiProfile = async (req, res) => {
   }
 }
 
-
 export const getAllTaxi = async (req, res) => {
   try {
     const taxi = await taxiModel.find({});
@@ -125,7 +131,8 @@ export const getAvailableTaxis = async (req, res) => {
 
     // Find all booked taxis for this date
     const bookedTaxis = await taxiBookingModel.find({
-      date: new Date(date)/*{ $gte: targetDate, $lt: nextDate }*/,
+      status: { $in: ["pending", "confirmed"] },
+      date: new Date(date),
     }).select("serviceId");
 
     const bookedTaxiIds = bookedTaxis.map((b) => b.serviceId.toString());
@@ -145,6 +152,13 @@ export const getAvailableTaxis = async (req, res) => {
 
 export const createTaxiBooking = async (req, res) => {
   try {
+    if (req.role !== "user") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed to book services"
+      })
+    }
+
     const { taxiId, pickup, dropup, date, time } = req.body;
     const userId = req.user;
 
@@ -154,6 +168,7 @@ export const createTaxiBooking = async (req, res) => {
 
     // Check if the taxi is already booked for this date
     const existingBooking = await taxiBookingModel.findOne({
+      status: { $in: ["pending", "confirmed"] },
       serviceId: taxiId,
       date: new Date(date),
     });

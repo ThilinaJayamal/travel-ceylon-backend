@@ -37,7 +37,7 @@ export const register = async (req, res) => {
             serviceType: user.serviceType,
             serviceId: user.serviceId,
             verify: user.verify,
-            role:"provider"
+            role: "provider"
         });
 
     } catch (error) {
@@ -107,7 +107,7 @@ export const login = async (req, res) => {
             return res.status(400).json({ message: "Invalid email or password" });
         }
 
-        const token = generateToken(user._id,"provider");
+        const token = generateToken(user._id, "provider");
 
         res.cookie("token", token, {
             httpOnly: true,
@@ -122,7 +122,7 @@ export const login = async (req, res) => {
             serviceType: user.serviceType,
             serviceId: user.serviceId,
             verify: user.verify,
-            role:"provider"
+            role: "provider"
         });
 
     } catch (error) {
@@ -143,3 +143,25 @@ export const logout = async (req, res) => {
         res.status(500).json({ message: error.message || "Server error" });
     }
 };
+
+
+export const getMe = async (req, res) => {
+    try {
+        if (req.role !== "provider") {
+            return res.status(401).json({ message: "You are not allowed to acess" })
+        }
+
+        const provider = await serviceProviderModel.findById(req.user).select("-password");
+        if (!provider) {
+            return res.status(404).json({ message: "profile not found" })
+        }
+
+        return res.status(200).json({
+            success: true,
+            profile: provider,
+            role:"provider"
+        })
+    } catch (error) {
+        res.status(500).json({ message: error.message || "Server error" });
+    }
+}

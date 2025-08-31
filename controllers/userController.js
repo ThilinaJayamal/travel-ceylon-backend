@@ -42,7 +42,7 @@ export const register = async (req, res) => {
       email: user.email,
       phone: user.phone,
       profilePic: user.profilePic,
-      role:"user"
+      role: "user"
     });
 
   } catch (error) {
@@ -85,7 +85,7 @@ export const login = async (req, res) => {
       email: user.email,
       phone: user.phone,
       profilePic: user.profilePic,
-      role:"user"
+      role: "user"
     });
 
   } catch (error) {
@@ -106,3 +106,24 @@ export const logout = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
+
+export const getMe = async (req, res) => {
+  try {
+    if (req.role !== "user") {
+      return res.status(401).json({ message: "You are not allowed to acess" })
+    }
+
+    const user = await userModel.findById(req.user).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "profile not found" })
+    }
+
+    return res.status(200).json({
+      success: true,
+      profile: user,
+      role:"user"
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+}

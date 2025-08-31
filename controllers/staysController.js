@@ -10,6 +10,13 @@ export const registerStays = async (req, res) => {
       return res.status(401).json("Not authorized");
     }
 
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const provider = await serviceProviderModel.findById(req.user);
     if (!provider) {
       return res.status(404).json("Service Provider Not Found");
@@ -135,6 +142,13 @@ export const getAllStays = async (req, res) => {
 
 export const addRoom = async (req, res) => {
   try {
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const { roomType, price, maxGuest, bedType, images } = req.body;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
@@ -172,6 +186,13 @@ export const addRoom = async (req, res) => {
 
 export const updateRoom = async (req, res) => {
   try {
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const { roomId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
@@ -208,6 +229,13 @@ export const updateRoom = async (req, res) => {
 
 export const deleteRoom = async (req, res) => {
   try {
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const { roomId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
@@ -250,6 +278,7 @@ export const getAvailableRooms = async (req, res) => {
 
     // Fetch all bookings that overlap with the requested dates
     const bookings = await staysBookingModel.find({
+      status: { $in: ["pending", "confirmed"] }, // block only active bookings
       $or: [
         { start_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
         { end_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
@@ -293,6 +322,13 @@ export const getAvailableRooms = async (req, res) => {
 
 export const bookRoom = async (req, res) => {
   try {
+    if (req.role !== "user") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed to book services"
+      })
+    }
+
     const user = req.user; // from auth middleware
     const { stayId, roomId, start_date, end_date } = req.body;
 
@@ -312,6 +348,7 @@ export const bookRoom = async (req, res) => {
     const conflictingBooking = await staysBookingModel.findOne({
       serviceId: stayId,
       roomId: roomId,
+      status: { $in: ["pending", "confirmed"] }, // block only active bookings
       $or: [
         { start_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
         { end_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
