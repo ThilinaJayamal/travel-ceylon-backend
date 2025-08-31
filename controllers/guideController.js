@@ -1,5 +1,6 @@
 import guideModel from "../models/Guide.js";
 import serviceProviderModel from "../models/ServiceProvider.js";
+import guideBookingModel from "../models/Bookings/GuideBooking.js"
 
 export const guideRegister = async (req, res) => {
     try {
@@ -62,7 +63,7 @@ export const getGuideProfile = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            guide: guide
+            guide: guide,
         })
     } catch (error) {
         res.status(500).json("Server Error")
@@ -144,5 +145,70 @@ export const updateGuide = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json("Server Error");
+    }
+};
+
+export const getAvailableGuides = async (req, res) => {
+    try {
+        const { date, time } = req.query;
+
+        if (!date || !time) {
+            return res.status(400).json({ message: "Please provide both date and time" });
+        }
+
+        // Find all guides
+        const allGuides = await guideModel.find();
+
+        // Find all bookings that match this date + time (and not cancelled)
+        const bookedGuides = await guideBookingModel.find({
+            date: new Date(date),
+            status: { $in: ["pending", "confirmed"] } // block only active bookings
+        }).select("serviceId");
+
+        const bookedGuideIds = bookedGuides.map(b => b.serviceId.toString());
+
+        // Filter only available guides
+        const available = allGuides.filter(
+            g => !bookedGuideIds.includes(g._id.toString())
+        );
+
+        res.status(200).json(available);
+
+    } catch (error) {
+        console.error("Error checking guide availability:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const createGuideBooking = async (req, res) => {
+    try {
+        const { serviceId, date, time, requests } = req.body;
+        const userId = req.user; // assuming you use JWT auth
+
+        // Check if guide already booked
+        const existingBooking = await guideBookingModel.findOne({
+            serviceId,
+            date: new Date(date),
+            time,
+            status: { $in: ["pending", "confirmed"] }
+        });
+
+        if (existingBooking) {
+            return res.status(400).json({ message: "Guide is not available at this time" });
+        }
+
+        // Create new booking
+        const newBooking = await guideBookingModel.create({
+            user: userId,
+            serviceId,
+            date,
+            time,
+            requests
+        });
+
+        res.status(201).json(newBooking);
+    } catch (error) {
+        console.error("Error creating guide booking:", error);
+        res.status(500).json({ message: "Server error" });
     }
 };

@@ -1,8 +1,8 @@
 import staysModel from "../models/Stays.js";
 import roomModel from "../models/Room.js";
 import serviceProviderModel from "../models/ServiceProvider.js";
-import bookingModel from "../models/Bookings.js"
-// -------------------------Stays---------------------------------------
+import staysBookingModel from "../models/Bookings/StaysBooking.js"
+
 
 export const registerStays = async (req, res) => {
   try {
@@ -138,8 +138,8 @@ export const addRoom = async (req, res) => {
     const { roomType, price, maxGuest, bedType, images } = req.body;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
-    if(!serviceProvider){
-      return res.status(401).json({message:"service account not found"})
+    if (!serviceProvider) {
+      return res.status(401).json({ message: "service account not found" })
     }
 
     const stays = await staysModel.findById(serviceProvider?.serviceId).populate("rooms");
@@ -175,15 +175,15 @@ export const updateRoom = async (req, res) => {
     const { roomId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
-    if(!serviceProvider){
-      return res.status(401).json({message:"service account not found"})
+    if (!serviceProvider) {
+      return res.status(401).json({ message: "service account not found" })
     }
 
     const stays = await staysModel.findById(serviceProvider?.serviceId);
     if (!stays) {
       return res.status(404).json({ message: "stays is not belongs to this service account" });
     }
-   
+
     if (!stays.rooms.includes(roomId)) {
       return res.status(403).json({ message: "Not authorized to update rooms in this stay" });
     }
@@ -211,8 +211,8 @@ export const deleteRoom = async (req, res) => {
     const { roomId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
-    if(!serviceProvider){
-      return res.status(401).json({message:"service account not found"})
+    if (!serviceProvider) {
+      return res.status(401).json({ message: "service account not found" })
     }
 
     const stays = await staysModel.findById(serviceProvider?.serviceId);
@@ -249,8 +249,7 @@ export const getAvailableRooms = async (req, res) => {
     const allStays = await staysModel.find().populate("rooms");
 
     // Fetch all bookings that overlap with the requested dates
-    const bookings = await bookingModel.find({
-      serviceType: "Stay",
+    const bookings = await staysBookingModel.find({
       $or: [
         { start_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
         { end_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
@@ -259,19 +258,30 @@ export const getAvailableRooms = async (req, res) => {
     });
 
     // Prepare available rooms for each stay
-    const result = allStays.map(stay => {
-      const bookedRoomIds = bookings
-        .filter(b => b.serviceId.toString() === stay._id.toString())
-        .map(b => b.roomId?.toString())
-        .filter(Boolean);
+    const result = allStays
+      .map(stay => {
+        const bookedRoomIds = bookings
+          .filter(b => b.serviceId.toString() === stay._id.toString())
+          .map(b => b.roomId?.toString())
+          .filter(Boolean);
 
-      const availableRooms = stay.rooms.filter(room => !bookedRoomIds.includes(room._id.toString()));
+        const available = stay.rooms.filter(room => !bookedRoomIds.includes(room._id.toString()));
 
-      return {
-        stay,
-        availableRooms
-      };
-    });
+        return available.length > 0
+          ? {
+            stays: {
+              _id: stay._id,
+              name: stay.name,
+              location: stay.location,
+              contact: stay.contact,
+              website: stay.website,
+              facilities: stay.facilities
+            },
+            available
+          }
+          : null;
+      })
+      .filter(Boolean); // remove stays with no available rooms
 
     res.status(200).json(result);
   } catch (error) {
@@ -299,8 +309,7 @@ export const bookRoom = async (req, res) => {
     if (!roomExists) return res.status(400).json({ message: "Room does not belong to this stay" });
 
     // Check for conflicting bookings
-    const conflictingBooking = await bookingModel.findOne({
-      serviceType: "Stay",
+    const conflictingBooking = await staysBookingModel.findOne({
       serviceId: stayId,
       roomId: roomId,
       $or: [
@@ -315,10 +324,9 @@ export const bookRoom = async (req, res) => {
     }
 
     // Create booking
-    const newBooking = await bookingModel.create({
+    const newBooking = await staysBookingModel.create({
       user: user,
       serviceId: stayId,
-      serviceType: "Stay",
       roomId,
       start_date,
       end_date,

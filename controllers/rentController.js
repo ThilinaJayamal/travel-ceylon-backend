@@ -1,6 +1,7 @@
 import rentModel from "../models/Rent.js";
 import serviceProviderModel from "../models/ServiceProvider.js";
 import vehicleModel from "../models/Vehicle.js";
+import rentBookingModel from "../models/Bookings/RentBooking.js"
 
 export const rentRegister = async (req, res) => {
   try {
@@ -163,7 +164,7 @@ export const updateVehicle = async (req, res) => {
     if (!rent) {
       return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
     }
-    
+
     if (!rent.vehicles.includes(vehicleId)) {
       return res.status(403).json({ message: "This vehicle does not belong to the given Rent" });
     }
@@ -232,5 +233,108 @@ export const deleteVehicle = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+export const getAvailableVehicles = async (req, res) => {
+  try {
+    const { pickup, returnDate, area } = req.query;
+
+    if (!pickup || !returnDate) {
+      return res.status(400).json({ message: "Please provide pickup and return dates" });
+    }
+
+    const pickupDate = new Date(pickup);
+    const return_Date = new Date(returnDate);
+
+    if (pickupDate >= return_Date) {
+      return res.status(400).json({ message: "Return date must be after pickup date" });
+    }
+
+    // 1. Find vehicles that have overlapping bookings
+    const conflictingBookings = await rentBookingModel.find({
+      $or: [
+        { pickup: { $lte: return_Date }, return: { $gte: pickupDate } } // overlap
+      ],
+      status: { $in: ["pending", "confirmed"] } // only active bookings
+    });
+
+    const bookedVehicleIds = conflictingBookings.map(b => b.serviceId.toString());
+
+    // 2. Fetch all vehicles
+    const allVehicles = await vehicleModel.find();
+
+    // 3. Filter out booked vehicles
+    const availableVehicles = allVehicles.filter(
+      v => !bookedVehicleIds.includes(v._id.toString())
+    );
+
+    return res.status(200).json({
+      total: availableVehicles.length,
+      vehicles: availableVehicles,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+export const createRentBooking = async (req, res) => {
+  try {
+    const { vehicleId, pickup, returnDate, area } = req.body;
+
+    if (!vehicleId || !pickup || !returnDate || !area) {
+      return res.status(400).json({ message: "vehicleId, pickup, returnDate, and area are required" });
+    }
+
+    const pickupDate = new Date(pickup);
+    const return_Date = new Date(returnDate);
+
+    if (pickupDate >= return_Date) {
+      return res.status(400).json({ message: "Return date must be after pickup date" });
+    }
+
+    // 1. Check vehicle exists
+    const vehicle = await vehicleModel.findById(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    // 2. Check for conflicting bookings
+    const conflict = await rentBookingModel.findOne({
+      serviceId: vehicleId,
+      status: { $in: ["pending", "confirmed"] }, // only active
+      $or: [
+        { pickup: { $lte: return_Date }, return: { $gte: pickupDate } } // overlap condition
+      ]
+    });
+
+    if (conflict) {
+      return res.status(400).json({ message: "Vehicle not available for selected dates" });
+    }
+
+    // 3. Create booking
+    const booking = new rentBookingModel({
+      user: req.user,
+      serviceId: vehicleId,
+      pickup: pickupDate,
+      return: return_Date,
+      area,
+      status: "pending"
+    });
+
+    await booking.save();
+
+    return res.status(201).json({
+      message: "Booking created successfully",
+      booking
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
