@@ -2,6 +2,7 @@ import express from "express";
 import { auth } from "../middleware/auth.js";
 import {
     bookRoom,
+    changeBookingState,
     deleteRoom,
     getAllStays,
     getAvailableRooms,
@@ -27,5 +28,6 @@ router.route("/rooms/:roomId").delete(auth, deleteRoom);
 
 router.route("/available-rooms").get(getAvailableRooms);
 router.route("/booking").post(auth, bookRoom);
+router.route("/booking/:bookingId").put(auth,changeBookingState);
 
 export default router

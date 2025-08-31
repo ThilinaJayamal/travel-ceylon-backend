@@ -213,3 +213,62 @@ export const createTaxiBooking = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+export const changeBookingState = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status } = req.body;
+
+    if (req?.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized dd"
+      });
+    }
+
+    const serviceProvider = await serviceProviderModel.findById(req?.user);
+    if (!serviceProvider) {
+      return res.status(404).json({
+        success: false,
+        message: "service account not found"
+      });
+    }
+
+    const bookings = await taxiBookingModel.find({ serviceId: serviceProvider?.serviceId });
+    const bookingIds = bookings?.map(b => b?._id.toString());
+
+    if (!bookingIds.includes(bookingId)) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized"
+      });
+    }
+
+    const validStatuses = ["completed", "confirmed", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(404).json({
+        success: false,
+        message: "invalid booking status"
+      })
+    }
+
+    const booking = await taxiBookingModel.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "booking not found"
+      })
+    }
+
+    booking.status = status;
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: "successfully booking status updated"
+    })
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+}
