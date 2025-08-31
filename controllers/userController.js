@@ -1,3 +1,4 @@
+import { getDistanceORS } from "../config/calculateDistance.js";
 import { generateToken } from "../config/generateToken.js";
 import userModel from "../models/User.js";
 import bcrypt from "bcryptjs";

@@ -6,6 +6,7 @@ const vehicleSchema = new mongoose.Schema({
   vehicleNo: { type: String, required: true },
   province: String,
   vehicleType: { type: String, required: true },
+  perDay: { type: Number, required: true }
 });
 
 const vehicle = mongoose.model("Vehicle", vehicleSchema)

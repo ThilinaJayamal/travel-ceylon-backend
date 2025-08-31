@@ -7,6 +7,8 @@ const taxiBookingSchema = new mongoose.Schema({
     dropup: { type: String, required: true },
     time: { type: String, required: true },
     date: { type: Date, required: true },
+    amount: { type: Number },
+    distance: { type: Number },
     status: { type: String, default: "pending", enum: ["pending", "confirmed", "cancelled", "completed"] },
 });
 

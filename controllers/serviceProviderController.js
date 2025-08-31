@@ -47,6 +47,10 @@ export const register = async (req, res) => {
 
 export const updateServiceProvider = async (req, res) => {
     try {
+         if (req.role !== "provider") {
+            return res.status(401).json({ message: "You are not allowed to acess" })
+        }
+        
         const serviceProvider = await serviceProviderModel.findById(req.user);
         if (!serviceProvider) {
             return res.status(404).json({ message: "Service provider account not found" });

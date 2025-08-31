@@ -1,6 +1,7 @@
 import serviceProviderModel from "../models/ServiceProvider.js";
 import taxiModel from "../models/Taxi.js";
 import taxiBookingModel from "../models/Bookings/TaxiBooking.js";
+import { getDistanceORS } from "../config/calculateDistance.js";
 
 export const registerTaxi = async (req, res) => {
   try {
@@ -33,7 +34,8 @@ export const registerTaxi = async (req, res) => {
       contact,
       website,
       vehicle,
-      profilePic
+      profilePic,
+      perKm
     } = req.body;
 
     const taxiUser = await taxiModel.create({
@@ -45,7 +47,8 @@ export const registerTaxi = async (req, res) => {
       contact,
       website,
       vehicle,
-      profilePic
+      profilePic,
+      perKm
     });
 
     provider.serviceId = taxiUser._id;
@@ -97,6 +100,13 @@ export const getAllTaxi = async (req, res) => {
 
 export const updateTaxi = async (req, res) => {
   try {
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const provider = await serviceProviderModel.findById(req.user);
 
     const taxi = await taxiModel.findById(provider.serviceId);
@@ -166,6 +176,11 @@ export const createTaxiBooking = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    const distance = await getDistanceORS(pickup, dropup);
+    if (distance == -1) {
+      return res.status(401).json({ message: "please check your pickup & dropup location names" })
+    }
+
     // Check if the taxi is already booked for this date
     const existingBooking = await taxiBookingModel.findOne({
       status: { $in: ["pending", "confirmed"] },
@@ -177,12 +192,16 @@ export const createTaxiBooking = async (req, res) => {
       return res.status(400).json({ message: "Taxi is already booked for this date" });
     }
 
+    const selectedTaxi = await taxiModel.findById(taxiId);
+
     // Create new booking
     const newBooking = await taxiBookingModel.create({
       user: userId,
       serviceId: taxiId,
       pickup,
       dropup,
+      distance,
+      amount: (distance * selectedTaxi?.perKm),
       time,
       date: new Date(date),
       status: "pending",

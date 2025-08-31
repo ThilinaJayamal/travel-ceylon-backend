@@ -5,7 +5,7 @@ import rentBookingModel from "../models/Bookings/RentBooking.js"
 
 export const rentRegister = async (req, res) => {
   try {
-    if (!req?.user || req.role === "user") {
+    if (!req?.user || req.role !== "provider") {
       return res.status(401).json("Not authorized");
     }
 
@@ -80,7 +80,7 @@ export const getAllRents = async (req, res) => {
 
 export const updateRent = async (req, res) => {
   try {
-    if (!req?.user || req.role === "user") {
+    if (!req?.user || req.role !== "provider") {
       return res.status(401).json("Not authorized");
     }
 
@@ -115,6 +115,13 @@ export const updateRent = async (req, res) => {
 
 export const addVehicle = async (req, res) => {
   try {
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
       return res.status(404).json({ message: "Service provider account not found" });
@@ -125,17 +132,23 @@ export const addVehicle = async (req, res) => {
       return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
     }
 
-    const { images, chasyNo, vehicleNo, province, vehicleType } = req.body;
+    const {
+      images,
+      chasyNo,
+      vehicleNo,
+      province,
+      vehicleType,
+      perDay
+    } = req.body;
 
-    const newVehicle = new vehicleModel({
+    const newVehicle = await vehicleModel.create({
       images: images || [],
       chasyNo,
       vehicleNo,
       province,
       vehicleType,
+      perDay
     });
-
-    await newVehicle.save();
 
     rent.vehicles.push(newVehicle._id);
     await rent.save();
@@ -153,6 +166,13 @@ export const addVehicle = async (req, res) => {
 
 export const updateVehicle = async (req, res) => {
   try {
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const { vehicleId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
@@ -169,23 +189,16 @@ export const updateVehicle = async (req, res) => {
       return res.status(403).json({ message: "This vehicle does not belong to the given Rent" });
     }
 
-    const updateData = {
-      images: req.body.images,
-      chasyNo: req.body.chasyNo,
-      vehicleNo: req.body.vehicleNo,
-      province: req.body.province,
-      vehicleType: req.body.vehicleType,
-    };
-
-    const updatedVehicle = await vehicleModel.findByIdAndUpdate(
-      vehicleId,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
+    const updatedVehicle = await vehicleModel.findById(vehicleId);
     if (!updatedVehicle) {
       return res.status(404).json({ message: "Vehicle not found" });
     }
+
+    if (req.body.images) updatedVehicle.images = req.body.images;
+    if (req.body.province) updatedVehicle.province = req.body.province;
+    if (req.body.perDay) updatedVehicle.perDay = req.body.perDay;
+
+    await updatedVehicle.save();
 
     return res.status(200).json({
       message: "Vehicle updated successfully",
@@ -200,6 +213,13 @@ export const updateVehicle = async (req, res) => {
 
 export const deleteVehicle = async (req, res) => {
   try {
+    if (req.role !== "provider") {
+      return res.status(401).json({
+        success: false,
+        message: "You are not allowed"
+      })
+    }
+
     const { vehicleId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);

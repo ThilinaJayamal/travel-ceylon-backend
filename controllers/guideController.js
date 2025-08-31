@@ -4,25 +4,34 @@ import guideBookingModel from "../models/Bookings/GuideBooking.js"
 
 export const guideRegister = async (req, res) => {
     try {
-        if (!req?.user) {
-            return res.status(401).json("Not authorized");
+        if (!req?.user || req?.role !== "provider") {
+            return res.status(401).json({
+                success: false,
+                message: "Not authorized"
+            });
         }
 
         const provider = await serviceProviderModel.findById(req.user);
         if (!provider) {
-            return res.status(404).json("Service Provider Not Found");
+            return res.status(404).json({
+                success: false,
+                message: "Service Provider Not Found"
+            });
         }
 
         if (provider.serviceId) {
             return res
                 .status(400)
-                .json("Can't create multiple services using a single account");
+                .json({
+                    success: false,
+                    message: "can't create multiple services using a single account"
+                });
         }
 
         const newGuide = await guideModel.create({
             name: req.body.name,
             nic: req.body.nic,
-            contact: req.body.contact || [],
+            contact: req.body.contact,
             profilePic: req.body.profilePic,
             images: req.body.images || [],
             specializeArea: req.body.specializeArea,
@@ -33,6 +42,7 @@ export const guideRegister = async (req, res) => {
             guideLicenceImg: req.body.guideLicenceImg,
             nicImg: req.body.nicImg,
             policeClearanceImg: req.body.policeClearanceImg,
+            price: req.body.price
         });
 
         provider.serviceId = newGuide._id;
@@ -182,10 +192,10 @@ export const getAvailableGuides = async (req, res) => {
 
 export const createGuideBooking = async (req, res) => {
     try {
-        if(req.role !== "user"){
+        if (req.role !== "user") {
             return res.status(401).json({
-                success:false,
-                message:"You are not allowed to book services"
+                success: false,
+                message: "You are not allowed to book services"
             })
         }
 

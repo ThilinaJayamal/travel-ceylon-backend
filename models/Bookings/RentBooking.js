@@ -6,6 +6,7 @@ const rentBookingSchema = new mongoose.Schema({
     pickup: { type: Date, required: true },
     return: { type: Date, required: true },
     area: { type: String, required: true },
+    amount: { type: Number },
     status: { type: String, default: "pending", enum: ["pending", "confirmed", "cancelled", "completed"] },
 });
 

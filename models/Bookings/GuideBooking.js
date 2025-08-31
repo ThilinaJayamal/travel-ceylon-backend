@@ -6,6 +6,7 @@ const guideBookingSchema = new mongoose.Schema({
     date: { type: Date, required: true },
     time: { type: String, required: true },
     requests: { type: String },
+    amount: { type: Number },
     status: { type: String, default: "pending", enum: ["pending", "confirmed", "cancelled", "completed"] },
 });
 

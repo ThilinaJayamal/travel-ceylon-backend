@@ -6,6 +6,7 @@ const staysBookingSchema = new mongoose.Schema({
   start_date: { type: Date, required: true },
   end_date: { type: Date, required: true },
   roomId: { type: mongoose.Types.ObjectId },
+  amount: { type: Number },
   status: { type: String, default: "pending", enum: ["pending", "confirmed", "cancelled", "completed"] },
 });
 
