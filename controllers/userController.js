@@ -127,3 +127,46 @@ export const getMe = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 }
+
+
+export const updateUser = async (req, res) => {
+  try {
+    if (req.role !== "user") {
+      return res.status(401).json({ message: "You are not allowed to acess" })
+    }
+    
+    const { name, email, password, profilePic, phone } = req.body;
+
+    // Find the user
+    const user = await userModel.findById(req?.user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update fields if provided
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone) user.phone = phone;
+    if (profilePic) user.profilePic = profilePic;
+
+    // Update password if provided
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+    }
+
+    // Save updated user
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      profilePic: updatedUser.profilePic,
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
