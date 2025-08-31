@@ -138,7 +138,8 @@ export const addVehicle = async (req, res) => {
       vehicleNo,
       province,
       vehicleType,
-      perDay
+      perDay,
+      area
     } = req.body;
 
     const newVehicle = await vehicleModel.create({
@@ -147,7 +148,8 @@ export const addVehicle = async (req, res) => {
       vehicleNo,
       province,
       vehicleType,
-      perDay
+      perDay,
+      area
     });
 
     rent.vehicles.push(newVehicle._id);
@@ -197,6 +199,7 @@ export const updateVehicle = async (req, res) => {
     if (req.body.images) updatedVehicle.images = req.body.images;
     if (req.body.province) updatedVehicle.province = req.body.province;
     if (req.body.perDay) updatedVehicle.perDay = req.body.perDay;
+    if (req.body.area) updatedVehicle.area = req.body.area;
 
     await updatedVehicle.save();
 
@@ -256,13 +259,12 @@ export const deleteVehicle = async (req, res) => {
   }
 };
 
-
 export const getAvailableVehicles = async (req, res) => {
   try {
-    const { pickup, returnDate, area } = req.query;
+    const { pickup, returnDate, area, vehicleType, minPrice, maxPrice } = req.query;
 
-    if (!pickup || !returnDate) {
-      return res.status(400).json({ message: "Please provide pickup and return dates" });
+    if (!pickup || !returnDate || !area || !vehicleType) {
+      return res.status(400).json({ message: "Please provide pickup date, return date, vehicleType and area" });
     }
 
     const pickupDate = new Date(pickup);
@@ -282,8 +284,21 @@ export const getAvailableVehicles = async (req, res) => {
 
     const bookedVehicleIds = conflictingBookings.map(b => b.serviceId.toString());
 
-    // 2. Fetch all vehicles
-    const allVehicles = await vehicleModel.find();
+
+    const filter = {
+      vehicleType: vehicleType,
+      area: area,
+    }
+
+    if (maxPrice && minPrice) {
+      filter.$and = [
+        { "perDay": { $gte: minPrice } },
+        { "perDay": { $lte: maxPrice } }
+      ]
+    }
+
+    // 2. Fetch Filted all vehicles
+    const allVehicles = await vehicleModel.find(filter);
 
     // 3. Filter out booked vehicles
     const availableVehicles = allVehicles.filter(
@@ -300,7 +315,6 @@ export const getAvailableVehicles = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
 
 export const createRentBooking = async (req, res) => {
   try {
@@ -380,7 +394,7 @@ export const changeBookingState = async (req, res) => {
     }
 
     const serviceProvider = await serviceProviderModel.findById(req?.user);
- 
+
     if (!serviceProvider) {
       return res.status(404).json({
         success: false,
