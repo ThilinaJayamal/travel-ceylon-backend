@@ -14,7 +14,7 @@ const GuideSchema = new mongoose.Schema({
   guideLicenceImg: { type: String, required: true },
   nicImg: { type: String, required: true },
   policeClearanceImg: { type: String, required: true },
-  price: { type: Number, required: true }
+  price: { type: Number, required: true },
 });
 
 const guide = mongoose.model("Guide", GuideSchema);

@@ -165,37 +165,48 @@ export const updateGuide = async (req, res) => {
     }
 };
 
+
 export const getAvailableGuides = async (req, res) => {
     try {
-        const { date, time } = req.query;
+        const { date, time, city, minPrice, maxPrice, languages, specializeArea } = req.query;
 
-        if (!date || !time) {
-            return res.status(400).json({ message: "Please provide both date and time" });
+        if (!date || !time || !city) {
+            return res.status(400).json({ message: "Please provide both date, city and time" });
         }
 
-        // Find all guides
-        const allGuides = await guideModel.find();
-
-        // Find all bookings that match this date + time (and not cancelled)
+        // Find booked guides
         const bookedGuides = await guideBookingModel.find({
             date: new Date(date),
-            status: { $in: ["pending", "confirmed"] } // block only active bookings
+            status: { $in: ["pending", "confirmed"] },
         }).select("serviceId");
 
         const bookedGuideIds = bookedGuides.map(b => b.serviceId.toString());
 
-        // Filter only available guides
-        const available = allGuides.filter(
-            g => !bookedGuideIds.includes(g._id.toString())
-        );
+        // Build filters
+        const filters = {};
 
-        res.status(200).json(available);
+        if (city) filters.city = city;
+        if (minPrice || maxPrice) {
+            filters.price = {};
+            if (minPrice) filters.price.$gte = Number(minPrice);
+            if (maxPrice) filters.price.$lte = Number(maxPrice);
+        }
+        if (specializeArea) filters.specializeArea = specializeArea;
+        if (languages) filters.languages = { $all: languages }; // expects array
 
+        // Query
+        const availableGuides = await guideModel.find({
+            ...filters,
+            _id: { $nin: bookedGuideIds },
+        });
+
+        res.status(200).json(availableGuides);
     } catch (error) {
         console.error("Error checking guide availability:", error);
         res.status(500).json({ message: "Server error" });
     }
 };
+
 
 export const createGuideBooking = async (req, res) => {
     try {
@@ -237,58 +248,58 @@ export const createGuideBooking = async (req, res) => {
 }
 
 export const changeBookingState = async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const { status } = req.body;
+    try {
+        const { bookingId } = req.params;
+        const { status } = req.body;
 
-    if (req?.role !== "provider") {
-      return res.status(401).json({
-        success: false,
-        message: "Not authorized"
-      });
+        if (req?.role !== "provider") {
+            return res.status(401).json({
+                success: false,
+                message: "Not authorized"
+            });
+        }
+
+        const serviceProvider = await serviceProviderModel.findById(req?.user);
+        if (!serviceProvider) {
+            return res.status(404).json({
+                success: false,
+                message: "service account not found"
+            });
+        }
+
+        const bookings = await guideBookingModel.find({ serviceId: serviceProvider?.serviceId });
+        const bookingIds = bookings?.map(b => b?._id.toString());
+
+        if (!bookingIds.includes(bookingId)) {
+            return res.status(401).json({
+                success: false,
+                message: "Not authorized"
+            });
+        }
+
+        if (status === "completed" || status === "confirmed" || status === "cancelled") {
+            return res.status(404).json({
+                success: false,
+                message: "invalid booking status"
+            })
+        }
+
+        const booking = await guideBookingModel.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "booking not found"
+            })
+        }
+
+        booking.status = status;
+        await booking.save();
+
+        res.status(200).json({
+            success: true,
+            message: "successfully booking status updated"
+        })
+    } catch (error) {
+        res.status(500).json({ message: "Server error" });
     }
-
-    const serviceProvider = await serviceProviderModel.findById(req?.user);
-    if (!serviceProvider) {
-      return res.status(404).json({
-        success: false,
-        message: "service account not found"
-      });
-    }
-
-    const bookings = await guideBookingModel.find({ serviceId: serviceProvider?.serviceId });
-    const bookingIds = bookings?.map(b => b?._id.toString());
-
-    if (!bookingIds.includes(bookingId)) {
-      return res.status(401).json({
-        success: false,
-        message: "Not authorized"
-      });
-    }
-
-    if (status === "completed" || status === "confirmed" || status === "cancelled") {
-      return res.status(404).json({
-        success: false,
-        message: "invalid booking status"
-      })
-    }
-    
-    const booking = await guideBookingModel.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "booking not found"
-      })
-    }
-
-    booking.status = status;
-    await booking.save();
-
-    res.status(200).json({
-      success: true,
-      message: "successfully booking status updated"
-    })
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
 }
