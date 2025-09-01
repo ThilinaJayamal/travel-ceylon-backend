@@ -1,31 +1,26 @@
 import staysModel from "../models/Stays.js";
 import roomModel from "../models/Room.js";
 import serviceProviderModel from "../models/ServiceProvider.js";
-import staysBookingModel from "../models/Bookings/StaysBooking.js"
+import staysBookingModel from "../models/Bookings/StaysBooking.js";
 
-
+// ------------------------- Stays -------------------------
 export const registerStays = async (req, res) => {
   try {
     if (!req?.user) {
-      return res.status(401).json("Not authorized");
+      return res.status(401).json({ success: false, message: "Not authorized" });
     }
 
     if (req.role !== "provider") {
-      return res.status(401).json({
-        success: false,
-        message: "You are not allowed"
-      })
+      return res.status(403).json({ success: false, message: "You are not allowed" });
     }
 
     const provider = await serviceProviderModel.findById(req.user);
     if (!provider) {
-      return res.status(404).json("Service Provider Not Found");
+      return res.status(404).json({ success: false, message: "Service provider not found" });
     }
 
     if (provider.serviceId) {
-      return res
-        .status(400)
-        .json("Can't create multiple services using a single account");
+      return res.status(400).json({ success: false, message: "Can't create multiple services using a single account" });
     }
 
     const newStay = await staysModel.create({
@@ -44,227 +39,126 @@ export const registerStays = async (req, res) => {
     provider.serviceType = "Stays";
     await provider.save();
 
-    res.status(201).json({
-      message: "Stay registered successfully",
-      stay: newStay,
-    });
+    res.status(201).json({ success: true, message: "Stay registered successfully", data: newStay });
   } catch (error) {
     console.error(error);
-    res.status(500).json("Server Error");
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
 export const updateStays = async (req, res) => {
   try {
-    if (!req?.user) {
-      return res.status(401).json("Not authorized");
-    }
+    if (!req?.user) return res.status(401).json({ success: false, message: "Not authorized" });
 
-    const serviceProvider = await serviceProviderModel.findById(req.user);
-    if (!serviceProvider) {
-      return res.status(404).json("Service provider account is not found");
-    }
+    const provider = await serviceProviderModel.findById(req.user);
+    if (!provider) return res.status(404).json({ success: false, message: "Service provider not found" });
 
-    const stays = await staysModel.findById(serviceProvider?.serviceId);
-    if (!stays) {
-      return res.status(404).json("Stays account is not found");
-    }
+    const stay = await staysModel.findById(provider?.serviceId);
+    if (!stay) return res.status(404).json({ success: false, message: "Stay not found" });
 
-    const {
-      name,
-      location,
-      contact,
-      website,
-      facilities,
-      images,
-      description,
-      profilePic,
-    } = req.body;
-
-    if (name) stays.name = name;
-    if (location) stays.location = location;
-    if (contact) stays.contact = contact;
-    if (website) stays.website = website;
-    if (facilities) stays.facilities = facilities;
-    if (images) stays.images = images;
-    if (description) stays.description = description;
-    if (profilePic) stays.profilePic = profilePic;
-
-    await stays.save();
-
-    res.status(200).json({
-      message: "Stay updated successfully",
-      stays
+    const fields = ["name", "location", "contact", "website", "facilities", "images", "description", "profilePic"];
+    fields.forEach(field => {
+      if (req.body[field] !== undefined) stay[field] = req.body[field];
     });
 
+    await stay.save();
+    res.status(200).json({ success: true, message: "Stay updated successfully", data: stay });
   } catch (error) {
     console.error(error);
-    res.status(500).json("Server Error");
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
 export const getStaysProfile = async (req, res) => {
   try {
-    const serviceProvider = await serviceProviderModel.findById(req.user)
-    if (!serviceProvider) {
-      return res.status(404).json({ message: "service provider not found" })
-    }
+    const provider = await serviceProviderModel.findById(req.user);
+    if (!provider) return res.status(404).json({ success: false, message: "Service provider not found" });
 
-    const stays = await staysModel.find(serviceProvider?.serviceId).populate("rooms");
-    if (!stays) {
-      return res.status(404).json({ message: "stays profile not found" });
-    }
+    const stay = await staysModel.findById(provider.serviceId).populate("rooms");
+    if (!stay) return res.status(404).json({ success: false, message: "Stay profile not found" });
 
-    return res.status(200).json({
-      success: true,
-      stays: stays
-    })
+    res.status(200).json({ success: true, data: stay });
   } catch (error) {
-    res.status(500).json("Server Error")
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
-}
+};
 
 export const getAllStays = async (req, res) => {
   try {
     const stays = await staysModel.find({});
-
-    return res.status(200).json({
-      success: true,
-      count: stays.length,
-      stays: stays
-    })
-  } catch (error) {
-    res.status(500).json("Server Error")
-  }
-}
-
-// -------------------------Rooms-------------------------------
-
-export const addRoom = async (req, res) => {
-  try {
-    if (req.role !== "provider") {
-      return res.status(401).json({
-        success: false,
-        message: "You are not allowed"
-      })
-    }
-
-    const { roomType, price, maxGuest, bedType, images, features } = req.body;
-
-    const serviceProvider = await serviceProviderModel.findById(req.user);
-    if (!serviceProvider) {
-      return res.status(401).json({ message: "service account not found" })
-    }
-
-    const stays = await staysModel.findById(serviceProvider?.serviceId).populate("rooms");
-    if (!stays) {
-      return res.status(404).json({ message: "stays is not belongs to this service account" });
-    }
-
-    const newRoom = new roomModel({
-      roomType,
-      price,
-      maxGuest,
-      bedType,
-      images,
-      features
-    });
-    await newRoom.save();
-
-    stays.rooms.push(newRoom._id);
-    await stays.save();
-
-    res.status(201).json({
-      message: "Room added successfully",
-      room: newRoom,
-      stays,
-    });
+    res.status(200).json({ success: true, count: stays.length, data: stays });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+// ------------------------- Rooms -------------------------
+export const addRoom = async (req, res) => {
+  try {
+    if (req.role !== "provider") return res.status(403).json({ success: false, message: "You are not allowed" });
+
+    const { roomType, price, maxGuest, bedType, images, features } = req.body;
+    const provider = await serviceProviderModel.findById(req.user);
+    if (!provider) return res.status(404).json({ success: false, message: "Service provider not found" });
+
+    const stay = await staysModel.findById(provider.serviceId).populate("rooms");
+    if (!stay) return res.status(404).json({ success: false, message: "Stay not found" });
+
+    const newRoom = await roomModel.create({ roomType, price, maxGuest, bedType, images, features });
+    stay.rooms.push(newRoom._id);
+    await stay.save();
+
+    res.status(201).json({ success: true, message: "Room added successfully", data: { room: newRoom, stay } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
 export const updateRoom = async (req, res) => {
   try {
-    if (req.role !== "provider") {
-      return res.status(401).json({
-        success: false,
-        message: "You are not allowed"
-      })
-    }
+    if (req.role !== "provider") return res.status(403).json({ success: false, message: "You are not allowed" });
 
     const { roomId } = req.params;
+    const provider = await serviceProviderModel.findById(req.user);
+    if (!provider) return res.status(404).json({ success: false, message: "Service provider not found" });
 
-    const serviceProvider = await serviceProviderModel.findById(req.user);
-    if (!serviceProvider) {
-      return res.status(401).json({ message: "service account not found" })
-    }
+    const stay = await staysModel.findById(provider.serviceId);
+    if (!stay || !stay.rooms.includes(roomId)) return res.status(403).json({ success: false, message: "Not authorized" });
 
-    const stays = await staysModel.findById(serviceProvider?.serviceId);
-    if (!stays) {
-      return res.status(404).json({ message: "stays is not belongs to this service account" });
-    }
-
-    if (!stays.rooms.includes(roomId)) {
-      return res.status(403).json({ message: "Not authorized to update rooms in this stay" });
-    }
-
-    const { roomType, price, maxGuest, bedType, images, features } = req.body;
-
-    const updatedRoom = await roomModel.findByIdAndUpdate(
-      roomId,
-      { roomType, price, maxGuest, bedType, images, features },
-      { new: true, runValidators: true }
-    );
-
-    res.json({
-      message: "Room updated successfully",
-      room: updatedRoom,
-    });
+    const updatedRoom = await roomModel.findByIdAndUpdate(roomId, req.body, { new: true, runValidators: true });
+    res.status(200).json({ success: true, message: "Room updated successfully", data: updatedRoom });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
 export const deleteRoom = async (req, res) => {
   try {
-    if (req.role !== "provider") {
-      return res.status(401).json({
-        success: false,
-        message: "You are not allowed"
-      })
-    }
+    if (req.role !== "provider") return res.status(403).json({ success: false, message: "You are not allowed" });
 
     const { roomId } = req.params;
+    const provider = await serviceProviderModel.findById(req.user);
+    if (!provider) return res.status(404).json({ success: false, message: "Service provider not found" });
 
-    const serviceProvider = await serviceProviderModel.findById(req.user);
-    if (!serviceProvider) {
-      return res.status(401).json({ message: "service account not found" })
-    }
-
-    const stays = await staysModel.findById(serviceProvider?.serviceId);
-    if (!stays) {
-      return res.status(404).json({ message: "stays is not belongs to this service account" });
-    }
-
-    if (!stays.rooms.includes(roomId)) {
-      return res.status(400).json({ message: "Not authorized to delete rooms in this stay" });
-    }
+    const stay = await staysModel.findById(provider.serviceId);
+    if (!stay || !stay.rooms.includes(roomId)) return res.status(403).json({ success: false, message: "Not authorized" });
 
     await roomModel.findByIdAndDelete(roomId);
+    stay.rooms = stay.rooms.filter(id => id.toString() !== roomId.toString());
+    await stay.save();
 
-    stays.rooms = stays.rooms?.filter((id) => id.toString() !== roomId.toString());
-    await stays.save();
-
-    res.json({ message: "Room deleted successfully" });
+    res.status(200).json({ success: true, message: "Room deleted successfully" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
+// ------------------------- Booking -------------------------
 export const getAvailableStays = async (req, res) => {
   try {
     const {
@@ -280,41 +174,22 @@ export const getAvailableStays = async (req, res) => {
     } = req.query;
 
     if (!start_date || !end_date || !location) {
-      return res.status(400).json({ message: "Please provide start_date, end_date, and location" });
+      return res.status(400).json({ success: false, message: "Please provide start_date, end_date, and location" });
     }
 
-    // Convert string parameters to numbers
     const guestCount = numberOfGuest ? parseInt(numberOfGuest) : 1;
     const roomCount = numberOfRooms ? parseInt(numberOfRooms) : 1;
     const minPriceFilter = minPrice ? parseFloat(minPrice) : null;
     const maxPriceFilter = maxPrice ? parseFloat(maxPrice) : null;
 
-    const staysFilters = {
-      location: location,
-    }
+    const staysFilters = { location };
+    if (staysFacilities?.length > 0) staysFilters.facilities = { $all: staysFacilities };
 
-    const roomsFilters = {
-      path: "rooms"
-    }
+    const roomsFilters = { path: "rooms" };
+    if (roomFacilities?.length > 0) roomsFilters.match = { features: { $all: roomFacilities } };
 
-    if (staysFacilities?.length > 0) {
-      staysFilters.facilities = {
-        $all: staysFacilities
-      }
-    }
-
-    if (roomFacilities?.length > 0) {
-      roomsFilters.match = {
-        features: {
-          $all: roomFacilities
-        }
-      }
-    }
-
-    // Fetch all stays with rooms populated
     const allStays = await staysModel.find(staysFilters).populate(roomsFilters);
 
-    // Fetch all bookings that overlap with the requested dates
     const bookings = await staysBookingModel.find({
       status: { $in: ["pending", "confirmed"] },
       $or: [
@@ -324,122 +199,59 @@ export const getAvailableStays = async (req, res) => {
       ]
     });
 
-    const result = allStays
-      .map(stay => {
-        const bookedRoomIds = bookings
-          .filter(b => b.serviceId.toString() === stay._id.toString())
-          .map(b => b.roomId?.toString())
-          .filter(Boolean);
+    const result = allStays.map(stay => {
+      const bookedRoomIds = bookings
+        .filter(b => b.serviceId.toString() === stay._id.toString())
+        .map(b => b.roomId?.toString())
+        .filter(Boolean);
 
-        let availableRooms = stay.rooms.filter(room =>
-          !bookedRoomIds.includes(room._id.toString())
-        );
+      let availableRooms = stay.rooms.filter(room => !bookedRoomIds.includes(room._id.toString()));
 
-        // Apply price filters if provided
-        if (minPriceFilter !== null || maxPriceFilter !== null) {
-          availableRooms = availableRooms.filter(room => {
-            const roomPrice = room.price || 0;
-            const withinMinPrice = minPriceFilter === null || roomPrice >= minPriceFilter;
-            const withinMaxPrice = maxPriceFilter === null || roomPrice <= maxPriceFilter;
-            return withinMinPrice && withinMaxPrice;
-          });
-        }
-
-        // Check if we have enough available rooms
-        if (availableRooms.length < roomCount) {
-          return null;
-        }
-
-        // Sort available rooms by capacity
-        availableRooms.sort((a, b) => (b.maxGuest || 0) - (a.maxGuest || 0));
-
-        // Select best rooms for the request
-        const selectedRooms = availableRooms.slice(0, roomCount);
-        const totalCapacity = selectedRooms.reduce((sum, room) => sum + (room.maxGuest || 0), 0);
-
-        // Check if selected rooms can accommodate all guests
-        if (totalCapacity < guestCount) {
-          return null;
-        }
-
-        // Calculate starting price
-        const availableRoomPrices = availableRooms
-          .map(room => room.price || 0)
-          .filter(price => price > 0);
-
-        const lowestAvailablePrice = availableRoomPrices.length > 0
-          ? Math.min(...availableRoomPrices)
-          : null;
-
-        return {
-          stays: {
-            _id: stay._id,
-            name: stay.name,
-            location: stay.location,
-            contact: stay.contact,
-            website: stay.website,
-            facilities: stay.facilities
-          },
-          rooms: availableRooms,
-          totalAvailableRooms: availableRooms.length,
-          starting_from: lowestAvailablePrice,
-          canAccommodateRequest: true
-        };
-      })
-      .filter(Boolean);
-
-    res.status(200).json({
-      success: true,
-      count: result.length,
-      result,
-      searchCriteria: {
-        location,
-        startDate: start_date,
-        endDate: end_date,
-        numberOfGuests: guestCount,
-        numberOfRooms: roomCount,
-        minPrice: minPriceFilter,
-        maxPrice: maxPriceFilter
+      if (minPriceFilter !== null || maxPriceFilter !== null) {
+        availableRooms = availableRooms.filter(room => {
+          const price = room.price || 0;
+          return (minPriceFilter === null || price >= minPriceFilter) && (maxPriceFilter === null || price <= maxPriceFilter);
+        });
       }
-    });
 
+      if (availableRooms.length < roomCount) return null;
+
+      availableRooms.sort((a, b) => (b.maxGuest || 0) - (a.maxGuest || 0));
+      const selectedRooms = availableRooms.slice(0, roomCount);
+      const totalCapacity = selectedRooms.reduce((sum, room) => sum + (room.maxGuest || 0), 0);
+      if (totalCapacity < guestCount) return null;
+
+      const lowestPrice = Math.min(...availableRooms.map(r => r.price || 0));
+      return { stay, rooms: availableRooms, totalAvailableRooms: availableRooms.length, starting_from: lowestPrice };
+    }).filter(Boolean);
+
+    res.status(200).json({ success: true, count: result.length, data: result });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
 export const bookRoom = async (req, res) => {
   try {
-    if (req.role !== "user") {
-      return res.status(401).json({
-        success: false,
-        message: "You are not allowed to book services"
-      })
-    }
+    if (req.role !== "user") return res.status(403).json({ success: false, message: "You are not allowed to book services" });
 
-    const user = req.user; // from auth middleware
     const { stayId, roomId, start_date, end_date } = req.body;
-
     if (!stayId || !roomId || !start_date || !end_date) {
-      return res.status(400).json({ message: "Please provide stayId, roomId, start_date and end_date" });
+      return res.status(400).json({ success: false, message: "Please provide stayId, roomId, start_date and end_date" });
     }
 
-    // Fetch the stay
     const stay = await staysModel.findById(stayId).populate("rooms");
-    if (!stay) return res.status(404).json({ message: "Stay not found" });
+    if (!stay) return res.status(404).json({ success: false, message: "Stay not found" });
 
-    // Check if room belongs to the stay
-    const roomExists = stay.rooms.some(r => r._id.toString() === roomId);
-    if (!roomExists) return res.status(400).json({ message: "Room does not belong to this stay" });
+    if (!stay.rooms.some(r => r._id.toString() === roomId)) {
+      return res.status(400).json({ success: false, message: "Room does not belong to this stay" });
+    }
 
-    // Check for conflicting bookings
-    const conflictingBooking = await staysBookingModel.findOne({
+    const conflict = await staysBookingModel.findOne({
       serviceId: stayId,
-      roomId: roomId,
-      status: { $in: ["pending", "confirmed"] }, // block only active bookings
+      roomId,
+      status: { $in: ["pending", "confirmed"] },
       $or: [
         { start_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
         { end_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
@@ -447,82 +259,40 @@ export const bookRoom = async (req, res) => {
       ]
     });
 
-    if (conflictingBooking) {
-      return res.status(400).json({ message: "Room is already booked for these dates" });
-    }
+    if (conflict) return res.status(400).json({ success: false, message: "Room is already booked for these dates" });
 
-    // Create booking
-    const newBooking = await staysBookingModel.create({
-      user: user,
-      serviceId: stayId,
-      roomId,
-      start_date,
-      end_date,
-      status: "pending"
-    });
-
-    res.status(201).json({ message: "Booking successful", booking: newBooking });
-
+    const newBooking = await staysBookingModel.create({ user: req.user, serviceId: stayId, roomId, start_date, end_date, status: "pending" });
+    res.status(201).json({ success: true, message: "Booking successful", data: newBooking });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
-
 
 export const changeBookingState = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { status } = req.body;
 
-    if (req?.role !== "provider") {
-      return res.status(401).json({
-        success: false,
-        message: "Not authorized"
-      });
-    }
+    if (req.role !== "provider") return res.status(403).json({ success: false, message: "Not authorized" });
 
-    const serviceProvider = await serviceProviderModel.findById(req?.user);
-    if (!serviceProvider) {
-      return res.status(404).json({
-        success: false,
-        message: "service account not found"
-      });
-    }
-
-    const bookings = await staysBookingModel.find({ serviceId: serviceProvider?.serviceId });
-    const bookingIds = bookings?.map(b => b?._id.toString());
-
-    if (!bookingIds.includes(bookingId)) {
-      return res.status(401).json({
-        success: false,
-        message: "Not authorized"
-      });
-    }
-
-    if (status === "completed" || status === "confirmed" || status === "cancelled") {
-      return res.status(404).json({
-        success: false,
-        message: "invalid booking status"
-      })
-    }
+    const provider = await serviceProviderModel.findById(req.user);
+    if (!provider) return res.status(404).json({ success: false, message: "Service provider not found" });
 
     const booking = await staysBookingModel.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "booking not found"
-      })
+    if (!booking || booking.serviceId.toString() !== provider.serviceId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to update this booking" });
+    }
+
+    if (!["pending", "confirmed", "completed", "cancelled"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid booking status" });
     }
 
     booking.status = status;
     await booking.save();
-
-    res.status(200).json({
-      success: true,
-      message: "successfully booking status updated"
-    })
+    res.status(200).json({ success: true, message: "Booking status updated successfully", data: booking });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
-}
+};

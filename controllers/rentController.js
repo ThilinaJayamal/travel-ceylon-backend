@@ -1,23 +1,30 @@
 import rentModel from "../models/Rent.js";
 import serviceProviderModel from "../models/ServiceProvider.js";
 import vehicleModel from "../models/Vehicle.js";
-import rentBookingModel from "../models/Bookings/RentBooking.js"
+import rentBookingModel from "../models/Bookings/RentBooking.js";
 
 export const rentRegister = async (req, res) => {
   try {
     if (!req?.user || req.role !== "provider") {
-      return res.status(401).json("Not authorized");
+      return res.status(401).json({
+        success: false,
+        message: "You are not authorized to register a rent service.",
+      });
     }
 
     const provider = await serviceProviderModel.findById(req.user);
     if (!provider) {
-      return res.status(404).json("Service Provider Not Found");
+      return res.status(404).json({
+        success: false,
+        message: "Your service provider account could not be found.",
+      });
     }
 
     if (provider.serviceId) {
-      return res
-        .status(400)
-        .json("Can't create multiple services using a single account");
+      return res.status(400).json({
+        success: false,
+        message: "You already have a registered service. Multiple services under one account are not allowed.",
+      });
     }
 
     const newRent = await rentModel.create({
@@ -33,114 +40,138 @@ export const rentRegister = async (req, res) => {
     provider.serviceType = "Rent";
     await provider.save();
 
-    res.status(201).json({
-      message: "Rent service registered successfully",
-      rent: newRent,
+    return res.status(201).json({
+      success: true,
+      message: "Rent service registered successfully.",
+      data: newRent,
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json("Server Error");
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while registering the rent service. Please try again later.",
+    });
   }
 };
 
 export const getRentProfile = async (req, res) => {
   try {
-    const serviceProvider = await serviceProviderModel.findById(req.user)
+    const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
-      return res.status(404).json({ message: "service provider not found" })
+      return res.status(404).json({
+        success: false,
+        message: "Your service provider account could not be found.",
+      });
     }
 
     const rent = await rentModel.findById(serviceProvider?.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "rent profile not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Rent profile not found.",
+      });
     }
 
     return res.status(200).json({
       success: true,
-      rent: rent
-    })
-  } catch (error) {
-    res.status(500).json("Server Error")
+      message: "Rent profile fetched successfully.",
+      data: rent,
+    });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch rent profile. Please try again later.",
+    });
   }
-}
+};
 
 export const getAllRents = async (req, res) => {
   try {
     const rents = await rentModel.find({});
-
     return res.status(200).json({
       success: true,
+      message: "All rent services fetched successfully.",
       count: rents.length,
-      rents: rents
-    })
-  } catch (error) {
-    res.status(500).json("Server Error")
+      data: rents,
+    });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch rent services. Please try again later.",
+    });
   }
-}
+};
 
 export const updateRent = async (req, res) => {
   try {
     if (!req?.user || req.role !== "provider") {
-      return res.status(401).json("Not authorized");
+      return res.status(401).json({
+        success: false,
+        message: "You are not authorized to update this rent service.",
+      });
     }
 
-    const serviceprovider = await serviceProviderModel.findById(req.user);
-    if (!serviceprovider) {
-      return res.status(404).json({ message: "Service provider account not found" });
+    const serviceProvider = await serviceProviderModel.findById(req.user);
+    if (!serviceProvider) {
+      return res.status(404).json({
+        success: false,
+        message: "Your service provider account could not be found.",
+      });
     }
 
-    const rent = await rentModel.findById(serviceprovider.serviceId);
+    const rent = await rentModel.findById(serviceProvider.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "Rent profile not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Rent profile not found.",
+      });
     }
 
     const { name, contact, profilePic } = req.body;
-
     if (name) rent.name = name;
     if (contact) rent.contact = contact;
     if (profilePic) rent.profilePic = profilePic;
 
     await rent.save();
 
-    res.status(200).json({
-      message: "Rent profile updated successfully",
-      rent,
+    return res.status(200).json({
+      success: true,
+      message: "Rent profile updated successfully.",
+      data: rent,
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json("Server Error");
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update rent profile. Please try again later.",
+    });
   }
 };
-
 
 export const addVehicle = async (req, res) => {
   try {
     if (req.role !== "provider") {
       return res.status(401).json({
         success: false,
-        message: "You are not allowed"
-      })
+        message: "You are not authorized to add vehicles.",
+      });
     }
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
-      return res.status(404).json({ message: "Service provider account not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Your service provider account could not be found.",
+      });
     }
 
-    const rent = await rentModel.findById(serviceProvider?.serviceId);
+    const rent = await rentModel.findById(serviceProvider.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
+      return res.status(404).json({
+        success: false,
+        message: "Rent service not found for this account.",
+      });
     }
 
-    const {
-      images,
-      chasyNo,
-      vehicleNo,
-      province,
-      vehicleType,
-      perDay,
-      area
-    } = req.body;
+    const { images, chasyNo, vehicleNo, province, vehicleType, perDay, area } = req.body;
 
     const newVehicle = await vehicleModel.create({
       images: images || [],
@@ -149,113 +180,143 @@ export const addVehicle = async (req, res) => {
       province,
       vehicleType,
       perDay,
-      area
+      area,
     });
 
     rent.vehicles.push(newVehicle._id);
     await rent.save();
 
     return res.status(201).json({
-      message: "Vehicle added successfully",
-      vehicle: newVehicle,
+      success: true,
+      message: "Vehicle added successfully.",
+      data: newVehicle,
     });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to add vehicle. Please try again later.",
+    });
   }
 };
-
 
 export const updateVehicle = async (req, res) => {
   try {
     if (req.role !== "provider") {
       return res.status(401).json({
         success: false,
-        message: "You are not allowed"
-      })
+        message: "You are not authorized to update vehicles.",
+      });
     }
 
     const { vehicleId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
-      return res.status(404).json({ message: "Service provider account not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Your service provider account could not be found.",
+      });
     }
 
-    const rent = await rentModel.findById(serviceProvider?.serviceId);
+    const rent = await rentModel.findById(serviceProvider.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
+      return res.status(404).json({
+        success: false,
+        message: "Rent service not found for this account.",
+      });
     }
 
     if (!rent.vehicles.includes(vehicleId)) {
-      return res.status(403).json({ message: "This vehicle does not belong to the given Rent" });
+      return res.status(403).json({
+        success: false,
+        message: "This vehicle does not belong to your rent service.",
+      });
     }
 
-    const updatedVehicle = await vehicleModel.findById(vehicleId);
-    if (!updatedVehicle) {
-      return res.status(404).json({ message: "Vehicle not found" });
+    const vehicle = await vehicleModel.findById(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: "Vehicle not found.",
+      });
     }
 
-    if (req.body.images) updatedVehicle.images = req.body.images;
-    if (req.body.province) updatedVehicle.province = req.body.province;
-    if (req.body.perDay) updatedVehicle.perDay = req.body.perDay;
-    if (req.body.area) updatedVehicle.area = req.body.area;
+    const { images, province, perDay, area } = req.body;
+    if (images) vehicle.images = images;
+    if (province) vehicle.province = province;
+    if (perDay) vehicle.perDay = perDay;
+    if (area) vehicle.area = area;
 
-    await updatedVehicle.save();
+    await vehicle.save();
 
     return res.status(200).json({
-      message: "Vehicle updated successfully",
-      vehicle: updatedVehicle,
+      success: true,
+      message: "Vehicle updated successfully.",
+      data: vehicle,
     });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update vehicle. Please try again later.",
+    });
   }
 };
-
 
 export const deleteVehicle = async (req, res) => {
   try {
     if (req.role !== "provider") {
       return res.status(401).json({
         success: false,
-        message: "You are not allowed"
-      })
+        message: "You are not authorized to delete vehicles.",
+      });
     }
 
     const { vehicleId } = req.params;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
-      return res.status(404).json({ message: "Service provider account not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Your service provider account could not be found.",
+      });
     }
 
-    const rent = await rentModel.findById(serviceProvider?.serviceId);
+    const rent = await rentModel.findById(serviceProvider.serviceId);
     if (!rent) {
-      return res.status(404).json({ message: "Rent accont is not belongs to this service account" });
+      return res.status(404).json({
+        success: false,
+        message: "Rent service not found for this account.",
+      });
     }
 
     if (!rent.vehicles.includes(vehicleId)) {
-      return res.status(403).json({ message: "This vehicle does not belong to the given Rent" });
+      return res.status(403).json({
+        success: false,
+        message: "This vehicle does not belong to your rent service.",
+      });
     }
 
     const deletedVehicle = await vehicleModel.findByIdAndDelete(vehicleId);
     if (!deletedVehicle) {
-      return res.status(404).json({ message: "Vehicle not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Vehicle not found.",
+      });
     }
 
-    rent.vehicles = rent.vehicles.filter(
-      (id) => id.toString() !== vehicleId.toString()
-    );
+    rent.vehicles = rent.vehicles.filter(id => id.toString() !== vehicleId);
     await rent.save();
 
     return res.status(200).json({
-      message: "Vehicle deleted successfully",
-      vehicle: deletedVehicle,
+      success: true,
+      message: "Vehicle deleted successfully.",
+      data: deletedVehicle,
     });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to delete vehicle. Please try again later.",
+    });
   }
 };
 
@@ -264,55 +325,48 @@ export const getAvailableVehicles = async (req, res) => {
     const { pickup, returnDate, area, vehicleType, minPrice, maxPrice } = req.query;
 
     if (!pickup || !returnDate || !area || !vehicleType) {
-      return res.status(400).json({ message: "Please provide pickup date, return date, vehicleType and area" });
+      return res.status(400).json({
+        success: false,
+        message: "Please provide pickup date, return date, area, and vehicle type.",
+      });
     }
 
     const pickupDate = new Date(pickup);
     const return_Date = new Date(returnDate);
 
     if (pickupDate >= return_Date) {
-      return res.status(400).json({ message: "Return date must be after pickup date" });
+      return res.status(400).json({
+        success: false,
+        message: "Return date must be after pickup date.",
+      });
     }
 
-    // 1. Find vehicles that have overlapping bookings
     const conflictingBookings = await rentBookingModel.find({
-      $or: [
-        { pickup: { $lte: return_Date }, return: { $gte: pickupDate } } // overlap
-      ],
-      status: { $in: ["pending", "confirmed"] } // only active bookings
+      $or: [{ pickup: { $lte: return_Date }, return: { $gte: pickupDate } }],
+      status: { $in: ["pending", "confirmed"] },
     });
 
     const bookedVehicleIds = conflictingBookings.map(b => b.serviceId.toString());
 
-
-    const filter = {
-      vehicleType: vehicleType,
-      area: area,
+    const filter = { vehicleType, area };
+    if (minPrice && maxPrice) {
+      filter.perDay = { $gte: Number(minPrice), $lte: Number(maxPrice) };
     }
 
-    if (maxPrice && minPrice) {
-      filter.$and = [
-        { "perDay": { $gte: minPrice } },
-        { "perDay": { $lte: maxPrice } }
-      ]
-    }
-
-    // 2. Fetch Filted all vehicles
     const allVehicles = await vehicleModel.find(filter);
-
-    // 3. Filter out booked vehicles
-    const availableVehicles = allVehicles.filter(
-      v => !bookedVehicleIds.includes(v._id.toString())
-    );
+    const availableVehicles = allVehicles.filter(v => !bookedVehicleIds.includes(v._id.toString()));
 
     return res.status(200).json({
-      total: availableVehicles.length,
-      vehicles: availableVehicles,
+      success: true,
+      message: "Available vehicles fetched successfully.",
+      count: availableVehicles.length,
+      data: availableVehicles,
     });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch available vehicles. Please try again later.",
+    });
   }
 };
 
@@ -321,120 +375,128 @@ export const createRentBooking = async (req, res) => {
     if (req.role !== "user") {
       return res.status(401).json({
         success: false,
-        message: "You are not allowed to book services"
-      })
+        message: "Only users can create rent bookings.",
+      });
     }
 
     const { vehicleId, pickup, returnDate, area } = req.body;
-
     if (!vehicleId || !pickup || !returnDate || !area) {
-      return res.status(400).json({ message: "vehicleId, pickup, returnDate, and area are required" });
+      return res.status(400).json({
+        success: false,
+        message: "vehicleId, pickup, returnDate, and area are required.",
+      });
     }
 
     const pickupDate = new Date(pickup);
     const return_Date = new Date(returnDate);
-
     if (pickupDate >= return_Date) {
-      return res.status(400).json({ message: "Return date must be after pickup date" });
+      return res.status(400).json({
+        success: false,
+        message: "Return date must be after pickup date.",
+      });
     }
 
-    // 1. Check vehicle exists
     const vehicle = await vehicleModel.findById(vehicleId);
     if (!vehicle) {
-      return res.status(404).json({ message: "Vehicle not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Vehicle not found.",
+      });
     }
 
-    // 2. Check for conflicting bookings
     const conflict = await rentBookingModel.findOne({
       serviceId: vehicleId,
-      status: { $in: ["pending", "confirmed"] }, // only active
-      $or: [
-        { pickup: { $lte: return_Date }, return: { $gte: pickupDate } } // overlap condition
-      ]
+      status: { $in: ["pending", "confirmed"] },
+      $or: [{ pickup: { $lte: return_Date }, return: { $gte: pickupDate } }],
     });
 
     if (conflict) {
-      return res.status(400).json({ message: "Vehicle not available for selected dates" });
+      return res.status(400).json({
+        success: false,
+        message: "Vehicle is not available for the selected dates.",
+      });
     }
 
-    // 3. Create booking
-    const booking = new rentBookingModel({
+    const booking = await rentBookingModel.create({
       user: req.user,
       serviceId: vehicleId,
       pickup: pickupDate,
       return: return_Date,
       area,
-      status: "pending"
+      status: "pending",
     });
-
-    await booking.save();
 
     return res.status(201).json({
-      message: "Booking created successfully",
-      booking
+      success: true,
+      message: "Booking created successfully.",
+      data: booking,
     });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to create booking. Please try again later.",
+    });
   }
 };
-
 
 export const changeBookingState = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { status } = req.body;
 
-    if (req?.role !== "provider") {
+    if (req.role !== "provider") {
       return res.status(401).json({
         success: false,
-        message: "Not authorized"
+        message: "You are not authorized to update booking status.",
       });
     }
 
-    const serviceProvider = await serviceProviderModel.findById(req?.user);
-
+    const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
       return res.status(404).json({
         success: false,
-        message: "service account not found"
+        message: "Service provider account not found.",
       });
     }
 
-    const bookings = await rentBookingModel.find({ serviceId: serviceProvider?.serviceId });
-    const bookingIds = bookings?.map(b => b?._id.toString());
+    const bookings = await rentBookingModel.find({ serviceId: serviceProvider.serviceId });
+    const bookingIds = bookings.map(b => b._id.toString());
 
     if (!bookingIds.includes(bookingId)) {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: "Not authorized"
+        message: "You are not authorized to update this booking.",
       });
     }
 
-    if (status === "completed" || status === "confirmed" || status === "cancelled") {
-      return res.status(404).json({
+    const validStatuses = ["pending", "confirmed", "cancelled", "completed"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
         success: false,
-        message: "invalid booking status"
-      })
+        message: "Invalid booking status. Allowed values: pending, confirmed, cancelled, completed.",
+      });
     }
 
     const booking = await rentBookingModel.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: "booking not found"
-      })
+        message: "Booking not found.",
+      });
     }
 
     booking.status = status;
     await booking.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "successfully booking status updated"
-    })
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
+      message: "Booking status updated successfully.",
+      data: booking,
+    });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update booking status. Please try again later.",
+    });
   }
-}
+};
