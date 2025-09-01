@@ -5,7 +5,24 @@ const StaySchema = new mongoose.Schema({
   location: String,
   contact: String,
   website: String,
-  facilities: [String],
+  facilities: {
+    type: [String], enum: [
+      "Breakfast",
+      "Fitness Center",
+      "Room Service",
+      "Garden",
+      "24 hour front desk",
+      "Family Rooms",
+      "Bar",
+      "Parking",
+      "Airport shuttle",
+      "Beach",
+      "Free Wifi",
+      "A/C Rooms",
+      "Swing pool",
+      "Water Park"
+    ]
+  },
   rooms: [
     {
       type: mongoose.Schema.Types.ObjectId,

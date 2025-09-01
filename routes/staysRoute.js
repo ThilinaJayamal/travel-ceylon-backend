@@ -5,7 +5,7 @@ import {
     changeBookingState,
     deleteRoom,
     getAllStays,
-    getAvailableRooms,
+    getAvailableStays,
     getStaysProfile,
     registerStays,
     updateRoom,
@@ -26,7 +26,7 @@ router.route("/rooms").post(auth, addRoom);
 router.route("/rooms/:roomId").put(auth, updateRoom);
 router.route("/rooms/:roomId").delete(auth, deleteRoom);
 
-router.route("/available-rooms").get(getAvailableRooms);
+router.route("/available").get(getAvailableStays);
 router.route("/booking").post(auth, bookRoom);
 router.route("/booking/:bookingId").put(auth,changeBookingState);
 

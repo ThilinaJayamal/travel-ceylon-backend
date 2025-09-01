@@ -149,7 +149,7 @@ export const addRoom = async (req, res) => {
       })
     }
 
-    const { roomType, price, maxGuest, bedType, images } = req.body;
+    const { roomType, price, maxGuest, bedType, images, features } = req.body;
 
     const serviceProvider = await serviceProviderModel.findById(req.user);
     if (!serviceProvider) {
@@ -166,7 +166,8 @@ export const addRoom = async (req, res) => {
       price,
       maxGuest,
       bedType,
-      images
+      images,
+      features
     });
     await newRoom.save();
 
@@ -209,11 +210,11 @@ export const updateRoom = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to update rooms in this stay" });
     }
 
-    const { roomType, price, maxGuest, bedType, images } = req.body;
+    const { roomType, price, maxGuest, bedType, images, features } = req.body;
 
     const updatedRoom = await roomModel.findByIdAndUpdate(
       roomId,
-      { roomType, price, maxGuest, bedType, images },
+      { roomType, price, maxGuest, bedType, images, features },
       { new: true, runValidators: true }
     );
 
@@ -264,21 +265,58 @@ export const deleteRoom = async (req, res) => {
   }
 };
 
-
-export const getAvailableRooms = async (req, res) => {
+export const getAvailableStays = async (req, res) => {
   try {
-    const { start_date, end_date } = req.query;
+    const {
+      start_date,
+      end_date,
+      location,
+      minPrice,
+      maxPrice,
+      numberOfGuest,
+      numberOfRooms,
+      staysFacilities,
+      roomFacilities
+    } = req.query;
 
-    if (!start_date || !end_date) {
-      return res.status(400).json({ message: "Please provide start_date and end_date" });
+    if (!start_date || !end_date || !location) {
+      return res.status(400).json({ message: "Please provide start_date, end_date, and location" });
+    }
+
+    // Convert string parameters to numbers
+    const guestCount = numberOfGuest ? parseInt(numberOfGuest) : 1;
+    const roomCount = numberOfRooms ? parseInt(numberOfRooms) : 1;
+    const minPriceFilter = minPrice ? parseFloat(minPrice) : null;
+    const maxPriceFilter = maxPrice ? parseFloat(maxPrice) : null;
+
+    const staysFilters = {
+      location: location,
+    }
+
+    const roomsFilters = {
+      path: "rooms"
+    }
+
+    if (staysFacilities?.length > 0) {
+      staysFilters.facilities = {
+        $all: staysFacilities
+      }
+    }
+
+    if (roomFacilities?.length > 0) {
+      roomsFilters.match = {
+        features: {
+          $all: roomFacilities
+        }
+      }
     }
 
     // Fetch all stays with rooms populated
-    const allStays = await staysModel.find().populate("rooms");
+    const allStays = await staysModel.find(staysFilters).populate(roomsFilters);
 
     // Fetch all bookings that overlap with the requested dates
     const bookings = await staysBookingModel.find({
-      status: { $in: ["pending", "confirmed"] }, // block only active bookings
+      status: { $in: ["pending", "confirmed"] },
       $or: [
         { start_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
         { end_date: { $lte: new Date(end_date), $gte: new Date(start_date) } },
@@ -286,7 +324,6 @@ export const getAvailableRooms = async (req, res) => {
       ]
     });
 
-    // Prepare available rooms for each stay
     const result = allStays
       .map(stay => {
         const bookedRoomIds = bookings
@@ -294,31 +331,85 @@ export const getAvailableRooms = async (req, res) => {
           .map(b => b.roomId?.toString())
           .filter(Boolean);
 
-        const available = stay.rooms.filter(room => !bookedRoomIds.includes(room._id.toString()));
+        let availableRooms = stay.rooms.filter(room =>
+          !bookedRoomIds.includes(room._id.toString())
+        );
 
-        return available.length > 0
-          ? {
-            stays: {
-              _id: stay._id,
-              name: stay.name,
-              location: stay.location,
-              contact: stay.contact,
-              website: stay.website,
-              facilities: stay.facilities
-            },
-            available
-          }
+        // Apply price filters if provided
+        if (minPriceFilter !== null || maxPriceFilter !== null) {
+          availableRooms = availableRooms.filter(room => {
+            const roomPrice = room.price || 0;
+            const withinMinPrice = minPriceFilter === null || roomPrice >= minPriceFilter;
+            const withinMaxPrice = maxPriceFilter === null || roomPrice <= maxPriceFilter;
+            return withinMinPrice && withinMaxPrice;
+          });
+        }
+
+        // Check if we have enough available rooms
+        if (availableRooms.length < roomCount) {
+          return null;
+        }
+
+        // Sort available rooms by capacity
+        availableRooms.sort((a, b) => (b.maxGuest || 0) - (a.maxGuest || 0));
+
+        // Select best rooms for the request
+        const selectedRooms = availableRooms.slice(0, roomCount);
+        const totalCapacity = selectedRooms.reduce((sum, room) => sum + (room.maxGuest || 0), 0);
+
+        // Check if selected rooms can accommodate all guests
+        if (totalCapacity < guestCount) {
+          return null;
+        }
+
+        // Calculate starting price
+        const availableRoomPrices = availableRooms
+          .map(room => room.price || 0)
+          .filter(price => price > 0);
+
+        const lowestAvailablePrice = availableRoomPrices.length > 0
+          ? Math.min(...availableRoomPrices)
           : null;
-      })
-      .filter(Boolean); // remove stays with no available rooms
 
-    res.status(200).json(result);
+        return {
+          stays: {
+            _id: stay._id,
+            name: stay.name,
+            location: stay.location,
+            contact: stay.contact,
+            website: stay.website,
+            facilities: stay.facilities
+          },
+          rooms: availableRooms,
+          totalAvailableRooms: availableRooms.length,
+          starting_from: lowestAvailablePrice,
+          canAccommodateRequest: true
+        };
+      })
+      .filter(Boolean);
+
+    res.status(200).json({
+      success: true,
+      count: result.length,
+      result,
+      searchCriteria: {
+        location,
+        startDate: start_date,
+        endDate: end_date,
+        numberOfGuests: guestCount,
+        numberOfRooms: roomCount,
+        minPrice: minPriceFilter,
+        maxPrice: maxPriceFilter
+      }
+    });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
-
 
 export const bookRoom = async (req, res) => {
   try {
@@ -415,7 +506,7 @@ export const changeBookingState = async (req, res) => {
         message: "invalid booking status"
       })
     }
-    
+
     const booking = await staysBookingModel.findById(bookingId);
     if (!booking) {
       return res.status(404).json({

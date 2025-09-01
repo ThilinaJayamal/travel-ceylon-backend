@@ -5,9 +5,10 @@ const RoomSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   maxGuest: { type: Number, required: true },
   bedType: { type: String, required: true },
-  images:[String]
+  features: { type: [String], enum: ["AC", "WI-FI"] },
+  images: [String]
 });
 
-const room = mongoose.model("Room",RoomSchema);
+const room = mongoose.model("Room", RoomSchema);
 
 export default room
