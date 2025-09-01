@@ -9,14 +9,13 @@ const TaxiSchema = new mongoose.Schema({
   drivingIdImg: String,
   contact: [String],
   website: String,
-  vehicle: {
-    images: [String],
-    chasyNo: { type: String, required: true },
-    vehicleNo: { type: String, required: true },
-    province: String,
-    vehicleType: { type: String, required: true },
-  },
-  perKm: { type: Number, required: true }
+  images: [String],
+  chasyNo: { type: String, required: true },
+  vehicleNo: { type: String, required: true },
+  province: String,
+  vehicleType: { type: String, required: true },
+  perKm: { type: Number, required: true },
+  location: { type: String, required: true }
 });
 
 const taxi = mongoose.model("Taxi", TaxiSchema);
